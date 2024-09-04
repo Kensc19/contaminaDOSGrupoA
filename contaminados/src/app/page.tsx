@@ -11,6 +11,7 @@ interface Game {
   id?: string; // Opcional ya que no se utiliza para crear un juego
 }
 
+//variables
 interface ApiResponse {
   status: number;
   msg: string;
