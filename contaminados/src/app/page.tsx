@@ -1,40 +1,30 @@
-// pages/index.js
 "use client";
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-// Definir el tipo Game para las partidas
-interface Game {
-  name: string;
-  owner: string;
-  password?: string;
-  id?: string; // Opcional ya que no se utiliza para crear un juego
-}
-
-interface ApiResponse {
-  status: number;
-  msg: string;
-  data: Game[];
-  others: any;
-}
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import { FaCog } from 'react-icons/fa';
 
 export default function Home() {
   const [view, setView] = useState('home');
-  const [gameDetails, setGameDetails] = useState<Game>({ name: '', owner: '', password: '' });
-  const [games, setGames] = useState<Game[]>([]); // Usamos un array del tipo Game
+  const [gameDetails, setGameDetails] = useState({ name: '', owner: '', password: '' });
+  const [games, setGames] = useState<Game[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [backendAddress, setBackendAddress] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Función para obtener las partidas desde la API
+  const filteredGames: Game[] = games.filter(game =>
+    game.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const fetchGames = async () => {
     try {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games');
       if (response.ok) {
-        const result: ApiResponse = await response.json();
-        console.log('Datos obtenidos:', result.data); // Mostrar datos obtenidos
+        const result = await response.json();
         if (Array.isArray(result.data)) {
-          setGames(result.data); // Guardar las partidas obtenidas
+          setGames(result.data);
         } else {
-          console.error('La propiedad "data" no es un array', result.data);
-          setGames([]); // Asegurarse de que `games` sea un array vacío si la respuesta no es un array
+          setGames([]);
         }
       } else {
         console.error('Error al obtener las partidas');
@@ -44,8 +34,7 @@ export default function Home() {
     }
   };
 
-  // Función para crear una nueva partida
-  const createGame = async (game: Game) => {
+  const createGame = async (game) => {
     try {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games', {
         method: 'POST',
@@ -57,10 +46,8 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Partida creada:', result);
-        // Actualizar la lista de partidas después de crear una nueva
-        fetchGames(); // Obtener la lista actualizada de partidas
-        setView('list'); // Cambiar la vista a la lista de partidas
+        fetchGames();
+        setView('list');
       } else {
         console.error('Error al crear la partida');
       }
@@ -69,7 +56,6 @@ export default function Home() {
     }
   };
 
-  // Efecto para cargar las partidas cuando se muestra la vista de lista
   useEffect(() => {
     if (view === 'list') {
       fetchGames();
@@ -78,27 +64,21 @@ export default function Home() {
 
   const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    createGame(gameDetails); // Llamar a la función para crear la partida
+    createGame(gameDetails);
   };
 
   return (
     <div className="container mt-5">
+      <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
+        <FaCog /> Configuración
+      </button>
+
       {view === 'home' && (
         <>
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
-            <button
-              className="btn btn-primary"
-              onClick={() => setView('create')}
-            >
-              Crear Partida
-            </button>
-            <button
-              className="btn btn-success"
-              onClick={() => setView('list')}
-            >
-              Unirse a Partida
-            </button>
+            <button className="btn btn-primary" onClick={() => setView('create')}>Crear Partida</button>
+            <button className="btn btn-success" onClick={() => setView('list')}>Unirse a Partida</button>
           </div>
         </>
       )}
@@ -136,15 +116,21 @@ export default function Home() {
             />
           </div>
           <button type="submit" className="btn btn-primary">Crear</button>
-          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>
-            Cancelar
-          </button>
+          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
 
       {view === 'list' && (
         <div className="mt-4">
           <h2>Lista de Partidas</h2>
+          <input
+            type="text"
+            className="form-control mb-3"
+            placeholder="Buscar partidas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="button" className="btn btn-primary mb-3" >Buscar</button>
           <table className="table table-bordered">
             <thead>
               <tr>
@@ -154,12 +140,12 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(games) && games.length > 0 ? (
-                games.map((game) => (
+              {Array.isArray(filteredGames) && filteredGames.length > 0 ? (
+                filteredGames.map((game) => (
                   <tr key={game.id}>
                     <td>{game.name}</td>
                     <td>{game.owner}</td>
-                    <td>
+                    <td className="text-end">
                       <button className="btn btn-success">Unirse</button>
                     </td>
                   </tr>
@@ -171,11 +157,36 @@ export default function Home() {
               )}
             </tbody>
           </table>
-          <button type="button" className="btn btn-secondary" onClick={() => setView('home')}>
-            Volver
-          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => setView('home')}>Volver</button>
         </div>
       )}
+
+      {/* Modal */}
+      <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Configuración</h5>
+              <button type="button" className="btn-close" onClick={() => setShowSettings(false)}></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Dirección del Backend</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={backendAddress}
+                  onChange={(e) => setBackendAddress(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary">Guardar</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
