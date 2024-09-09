@@ -1,4 +1,3 @@
-// pages/index.js
 "use client";
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -8,20 +7,25 @@ interface Game {
   name: string;
   owner: string;
   password?: string;
-  id?: string; // Opcional ya que no se utiliza para crear un juego
+  id?: string;
+  players?: string[];  // Lista de jugadores en la sala
 }
 
 interface ApiResponse {
   status: number;
   msg: string;
-  data: Game[];
+  data: Game;
   others: any;
 }
 
 export default function Home() {
   const [view, setView] = useState('home');
   const [gameDetails, setGameDetails] = useState<Game>({ name: '', owner: '', password: '' });
-  const [games, setGames] = useState<Game[]>([]); // Usamos un array del tipo Game
+  const [games, setGames] = useState<Game[]>([]);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [playerName, setPlayerName] = useState(''); // Nombre del jugador
+  const [gamePassword, setGamePassword] = useState(''); // Contraseña de la partida
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -29,12 +33,12 @@ export default function Home() {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games');
       if (response.ok) {
         const result: ApiResponse = await response.json();
-        console.log('Datos obtenidos:', result.data); // Mostrar datos obtenidos
+        console.log('Datos obtenidos:', result.data);
         if (Array.isArray(result.data)) {
-          setGames(result.data); // Guardar las partidas obtenidas
+          setGames(result.data);
         } else {
           console.error('La propiedad "data" no es un array', result.data);
-          setGames([]); // Asegurarse de que `games` sea un array vacío si la respuesta no es un array
+          setGames([]);
         }
       } else {
         console.error('Error al obtener las partidas');
@@ -56,16 +60,58 @@ export default function Home() {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const result: ApiResponse = await response.json();
         console.log('Partida creada:', result);
-        // Actualizar la lista de partidas después de crear una nueva
-        fetchGames(); // Obtener la lista actualizada de partidas
-        setView('list'); // Cambiar la vista a la lista de partidas
+
+        // Usar la respuesta directamente para redirigir al usuario
+        setSelectedGame(result.data);
+        setView('gameDetails'); // Redirigir a los detalles de la partida
       } else {
         console.error('Error al crear la partida');
+        setErrorMessage('Error al crear la partida.');
       }
     } catch (error) {
       console.error('Error en la petición:', error);
+      setErrorMessage('Error en la petición: ' + error);
+    }
+  };
+
+  // Función para unirse a una partida
+  const joinGame = async (gameId: string, playerName: string, password?: string) => {
+    try {
+      // Construir el cuerpo de la petición con el nombre del jugador
+      const bodyData = { player: playerName };
+
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'password': password || '', // Contraseña en el header si existe
+        },
+        body: JSON.stringify(bodyData), // Cuerpo con el nombre del jugador
+      });
+
+      if (response.ok) {
+        const result: Game = await response.json();
+        console.log('Unido a la partida:', result);
+
+        if (result && result.players) {
+          setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
+        } else {
+          console.warn('Los detalles de la partida no contienen jugadores o no se han recibido correctamente');
+        }
+        setView('gameDetails'); // Cambiar la vista para mostrar los detalles de la partida
+      } else if (response.status === 400) {
+        const errorResult = await response.json();
+        console.error('Error al unirse a la partida', errorResult);
+        alert('No se pudo unir a la partida. ' + (errorResult.msg || 'Verifica si la contraseña es correcta.'));
+      } else {
+        console.error('Error desconocido al unirse a la partida');
+        alert('Error desconocido al unirse a la partida.');
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      alert('Error en la petición: ' + error);
     }
   };
 
@@ -76,9 +122,22 @@ export default function Home() {
     }
   }, [view]);
 
+  // Manejar el formulario de unirse a la partida
+  const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (selectedGame) {
+      joinGame(selectedGame.id!, playerName, gamePassword);
+    }
+  };
+
   const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    createGame(gameDetails); // Llamar a la función para crear la partida
+    createGame(gameDetails);
+  };
+
+  const handleSelectGame = (game: Game) => {
+    setSelectedGame(game);
+    setView('joinGame'); // Cambiar a la vista de unirse a la partida
   };
 
   return (
@@ -87,16 +146,10 @@ export default function Home() {
         <>
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
-            <button
-              className="btn btn-primary"
-              onClick={() => setView('create')}
-            >
+            <button className="btn btn-primary" onClick={() => setView('create')}>
               Crear Partida
             </button>
-            <button
-              className="btn btn-success"
-              onClick={() => setView('list')}
-            >
+            <button className="btn btn-success" onClick={() => setView('list')}>
               Unirse a Partida
             </button>
           </div>
@@ -136,44 +189,96 @@ export default function Home() {
             />
           </div>
           <button type="submit" className="btn btn-primary">Crear</button>
-          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>
-            Cancelar
-          </button>
         </form>
       )}
 
       {view === 'list' && (
         <div className="mt-4">
-          <h2>Lista de Partidas</h2>
-          <table className="table table-bordered">
-            <thead>
-              <tr>
-                <th>Nombre de la Partida</th>
-                <th>Propietario</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(games) && games.length > 0 ? (
-                games.map((game) => (
-                  <tr key={game.id}>
-                    <td>{game.name}</td>
-                    <td>{game.owner}</td>
-                    <td>
-                      <button className="btn btn-success">Unirse</button>
-                    </td>
+          <h2>Lista de Partidas Disponibles</h2>
+          {games.length === 0 ? (
+            <p>No hay partidas disponibles.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Propietario</th>
+                    <th>Acción</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3}>No hay partidas disponibles</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <button type="button" className="btn btn-secondary" onClick={() => setView('home')}>
-            Volver
+                </thead>
+                <tbody>
+                  {games.map((game) => (
+                    <tr key={game.name + game.owner}>
+                      <td>{game.name}</td>
+                      <td>{game.owner}</td>
+                      <td>
+                        <button className="btn btn-primary" onClick={() => handleSelectGame(game)}>
+                          Unirse
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'joinGame' && selectedGame && (
+        <form onSubmit={handleJoinGameSubmit} className="mt-4">
+          <h2>Unirse a la Partida</h2>
+          <div className="mb-3">
+            <label className="form-label">Nombre de Jugador</label>
+            <input
+              type="text"
+              className="form-control"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Contraseña (si es necesaria)</label>
+            <input
+              type="password"
+              className="form-control"
+              value={gamePassword}
+              onChange={(e) => setGamePassword(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary">Unirse</button>
+          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('list')}>
+            Cancelar
           </button>
+        </form>
+      )}
+
+      {view === 'gameDetails' && selectedGame && (
+        <div className="mt-4">
+          <h2>Detalles de la Partida: {selectedGame.name}</h2>
+          <p>Propietario: {selectedGame.owner}</p>
+          <p>Contraseña: {selectedGame.password ? 'Sí' : 'No'}</p>
+          <h3>Jugadores:</h3>
+          {selectedGame.players && selectedGame.players.length > 0 ? (
+            <ul>
+              {selectedGame.players.map((player, index) => (
+                <li key={index}>{player}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay jugadores en la partida.</p>
+          )}
+          <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
+            Volver a la Lista
+          </button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="alert alert-danger mt-4" role="alert">
+          {errorMessage}
         </div>
       )}
     </div>
