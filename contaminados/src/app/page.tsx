@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import { FaCog } from 'react-icons/fa';
 
 // Definir el tipo Game para las partidas
 interface Game {
@@ -26,6 +28,15 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState('');
   const [playerName, setPlayerName] = useState(''); // Nombre del jugador
   const [gamePassword, setGamePassword] = useState(''); // Contraseña de la partida
+  const [searchQuery, setSearchQuery] = useState('');
+  const [backendAddress, setBackendAddress] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+
+
+  const filteredGames: Game[] = games.filter(game =>
+    game.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -35,6 +46,7 @@ export default function Home() {
         const result: ApiResponse = await response.json();
         console.log('Datos obtenidos:', result.data);
         if (Array.isArray(result.data)) {
+          setGames(result.data);
           setGames(result.data);
         } else {
           console.error('La propiedad "data" no es un array', result.data);
@@ -48,8 +60,7 @@ export default function Home() {
     }
   };
 
-  // Función para crear una nueva partida
-  const createGame = async (game: Game) => {
+  const createGame = async (game) => {
     try {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games', {
         method: 'POST',
@@ -115,7 +126,6 @@ export default function Home() {
     }
   };
 
-  // Efecto para cargar las partidas cuando se muestra la vista de lista
   useEffect(() => {
     if (view === 'list') {
       fetchGames();
@@ -142,16 +152,16 @@ export default function Home() {
 
   return (
     <div className="container mt-5">
+      <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
+        <FaCog /> Configuración
+      </button>
+
       {view === 'home' && (
         <>
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
-            <button className="btn btn-primary" onClick={() => setView('create')}>
-              Crear Partida
-            </button>
-            <button className="btn btn-success" onClick={() => setView('list')}>
-              Unirse a Partida
-            </button>
+            <button className="btn btn-primary" onClick={() => setView('create')}>Crear Partida</button>
+            <button className="btn btn-success" onClick={() => setView('list')}>Unirse a Partida</button>
           </div>
         </>
       )}
@@ -189,12 +199,22 @@ export default function Home() {
             />
           </div>
           <button type="submit" className="btn btn-primary">Crear</button>
+          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
 
       {view === 'list' && (
         <div className="mt-4">
           <h2>Lista de Partidas Disponibles</h2>
+          <input
+            type="text"
+            className="form-control mb-3"
+            placeholder="Buscar partidas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="button" className="btn btn-primary mb-3" >Buscar</button>
+
           {games.length === 0 ? (
             <p>No hay partidas disponibles.</p>
           ) : (
@@ -225,6 +245,33 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* Modal */}
+      <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Configuración</h5>
+              <button type="button" className="btn-close" onClick={() => setShowSettings(false)}></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Dirección del Backend</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={backendAddress}
+                  onChange={(e) => setBackendAddress(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary">Guardar</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {view === 'joinGame' && selectedGame && (
         <form onSubmit={handleJoinGameSubmit} className="mt-4">

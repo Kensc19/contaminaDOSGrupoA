@@ -1,0 +1,7 @@
+.config-button {
+    float: right; /* Aligns the button to the right */
+  }
+  
+  .config-icon {
+    margin-right: 5px; /* Optional: Adds some space between the icon and the text */
+  }
