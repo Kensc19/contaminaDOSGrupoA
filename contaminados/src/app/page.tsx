@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import { FaCog } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -38,6 +37,14 @@ interface ApiResponse {
 }
 
 export default function Home() {
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      require('bootstrap/dist/js/bootstrap.bundle.min.js');
+    }
+  }, []);
+
+
   const [view, setView] = useState('home');
   const [gameDetails, setGameDetails] = useState<Game>({ name: '', owner: '', password: '' });
   const [games, setGames] = useState<Game[]>([]);
