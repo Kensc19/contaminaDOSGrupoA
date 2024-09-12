@@ -48,7 +48,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [backendAddress, setBackendAddress] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-  const [filteredGames, setFilteredGames] = useState([]);
+  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
 
@@ -75,7 +75,7 @@ export default function Home() {
     }
   };
 
-  const createGame = async (game) => {
+  const createGame = async (game: Game) => {
     try {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games', {
         method: 'POST',
@@ -86,7 +86,7 @@ export default function Home() {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const result: ApiResponse = await response.json();
         setSelectedGame(result.data);
         fetchGames();
         setView('gameDetails');
@@ -97,45 +97,6 @@ export default function Home() {
     } catch (error) {
       console.error('Error en la petición:', error);
       setErrorMessage('Error en la petición: ' + error);
-    }
-  };
-
-  // Función para unirse a una partida
-  const joinGame = async (gameId: string, playerName: string, password?: string) => {
-    try {
-      // Construir el cuerpo de la petición con el nombre del jugador
-      const bodyData = { player: playerName };
-
-      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'password': password || '', // Contraseña en el header si existe
-        },
-        body: JSON.stringify(bodyData), // Cuerpo con el nombre del jugador
-      });
-
-      if (response.ok) {
-        const result: Game = await response.json();
-        console.log('Unido a la partida:', result);
-
-        if (result && result.players) {
-          setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
-        } else {
-          console.warn('Los detalles de la partida no contienen jugadores o no se han recibido correctamente');
-        }
-        setView('gameDetails'); // Cambiar la vista para mostrar los detalles de la partida
-      } else if (response.status === 400) {
-        const errorResult = await response.json();
-        console.error('Error al unirse a la partida', errorResult);
-        alert('No se pudo unir a la partida. ' + (errorResult.msg || 'Verifica si la contraseña es correcta.'));
-      } else {
-        console.error('Error desconocido al unirse a la partida');
-        alert('Error desconocido al unirse a la partida.');
-      }
-    } catch (error) {
-      console.error('Error en la petición:', error);
-      alert('Error en la petición: ' + error);
     }
   };
 
@@ -203,7 +164,7 @@ export default function Home() {
       setCurrentPage(page);
     }
   };
-  
+
   useEffect(() => {
     const fetchAndSearchGames = async () => {
       if (view === 'list') {
@@ -230,17 +191,9 @@ export default function Home() {
         }
       }
     };
-  
+
     fetchAndSearchGames();
   }, [view, searchQuery]);
-
-  // Manejar el formulario de unirse a la partida
-  const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (selectedGame) {
-      joinGame(selectedGame.id!, playerName, gamePassword);
-    }
-  };
 
   // Manejar el formulario de unirse a la partida
   const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -311,8 +264,8 @@ export default function Home() {
           <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
-    {view === 'list' && (
-        <div className="mt-4">
+      {view === 'list' && (
+        <form onSubmit={handleJoinGameSubmit} className="mt-4">
           <h2>Lista de Partidas Disponibles</h2>
           <input
             type="text"
@@ -337,7 +290,7 @@ export default function Home() {
                     <td>{game.name}</td>
                     <td>{game.owner}</td>
                     <td className="text-end">
-                      <button className="btn btn-success">Unirse</button>
+                      <button className="btn btn-success" onClick={() => handleSelectGame(game)}>Unirse</button>
                     </td>
                   </tr>
                 ))
@@ -367,40 +320,10 @@ export default function Home() {
             </button>
           </div>
           <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
-          <button type="button" className="btn btn-primary mb-3" >Buscar</button>
-
-          {games.length === 0 ? (
-            <p>No hay partidas disponibles.</p>
-          ) : (
-            <div className="table-responsive">
-              <table className="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Propietario</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map((game) => (
-                    <tr key={game.name + game.owner}>
-                      <td>{game.name}</td>
-                      <td>{game.owner}</td>
-                      <td>
-                        <button className="btn btn-primary" onClick={() => handleSelectGame(game)}>
-                          Unirse
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        </form>
       )}
       {/* Modal */}
-      <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex="-1">
+      <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex={-1}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
@@ -453,7 +376,6 @@ export default function Home() {
           </button>
         </form>
       )}
-
       {view === 'gameDetails' && selectedGame && (
         <div className="mt-4">
           <h2>Detalles de la Partida: {selectedGame.name}</h2>
@@ -479,8 +401,7 @@ export default function Home() {
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
         </div>
-      )} 
-
+      )}
     </div>
   );
 }
