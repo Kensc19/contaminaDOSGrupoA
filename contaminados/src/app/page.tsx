@@ -3,6 +3,23 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import { FaCog } from 'react-icons/fa';
+import axios from 'axios';
+
+// Definir el tipo Game para las partidas
+interface Game {
+  name: string;
+  owner: string;
+  password?: string;
+  id?: string;
+  players?: string[];  // Lista de jugadores en la sala
+}
+
+interface ApiResponse {
+  status: number;
+  msg: string;
+  data: Game;
+  others: any;
+}
 
 // Definir el tipo Game para las partidas
 interface Game {
@@ -31,12 +48,9 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [backendAddress, setBackendAddress] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-
-
-  const filteredGames: Game[] = games.filter(game =>
-    game.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+  const [filteredGames, setFilteredGames] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [limit, setLimit] = useState(10);
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -47,10 +61,11 @@ export default function Home() {
         console.log('Datos obtenidos:', result.data);
         if (Array.isArray(result.data)) {
           setGames(result.data);
-          setGames(result.data);
+          setFilteredGames(result.data.slice(0, limit));
         } else {
           console.error('La propiedad "data" no es un array', result.data);
           setGames([]);
+          setFilteredGames([]);
         }
       } else {
         console.error('Error al obtener las partidas');
@@ -71,12 +86,10 @@ export default function Home() {
       });
 
       if (response.ok) {
-        const result: ApiResponse = await response.json();
-        console.log('Partida creada:', result);
-
-        // Usar la respuesta directamente para redirigir al usuario
+        const result = await response.json();
         setSelectedGame(result.data);
-        setView('gameDetails'); // Redirigir a los detalles de la partida
+        fetchGames();
+        setView('gameDetails');
       } else {
         console.error('Error al crear la partida');
         setErrorMessage('Error al crear la partida.');
@@ -126,11 +139,108 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    if (view === 'list') {
-      fetchGames();
+  // Función para unirse a una partida
+  const joinGame = async (gameId: string, playerName: string, password?: string) => {
+    try {
+      // Construir el cuerpo de la petición con el nombre del jugador
+      const bodyData = { player: playerName };
+
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'password': password || '', // Contraseña en el header si existe
+        },
+        body: JSON.stringify(bodyData), // Cuerpo con el nombre del jugador
+      });
+
+      if (response.ok) {
+        const result: Game = await response.json();
+        console.log('Unido a la partida:', result);
+
+        if (result && result.players) {
+          setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
+        } else {
+          console.warn('Los detalles de la partida no contienen jugadores o no se han recibido correctamente');
+        }
+        setView('gameDetails'); // Cambiar la vista para mostrar los detalles de la partida
+      } else if (response.status === 400) {
+        const errorResult = await response.json();
+        console.error('Error al unirse a la partida', errorResult);
+        alert('No se pudo unir a la partida. ' + (errorResult.msg || 'Verifica si la contraseña es correcta.'));
+      } else {
+        console.error('Error desconocido al unirse a la partida');
+        alert('Error desconocido al unirse a la partida.');
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      alert('Error en la petición: ' + error);
     }
-  }, [view]);
+  };
+
+  const handleSearch = async (page = 0) => {
+    if (searchQuery.length >= 3) {
+      try {
+        const response = await axios.get(`https://contaminados.akamai.meseguercr.com/api/games`, {
+          params: {
+            name: searchQuery,
+            status: 'lobby',
+            page: page,
+            limit: limit
+          }
+        });
+        if (response.status === 200) {
+          setFilteredGames(response.data.data);
+          setCurrentPage(page);
+        } else {
+          console.error('Error fetching games:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching games:', error);
+      }
+    } else {
+      setFilteredGames(games.slice(page * limit, (page + 1) * limit)); // Mostrar juegos paginados si la búsqueda es menor a 3 caracteres
+      setCurrentPage(page);
+    }
+  };
+  
+  useEffect(() => {
+    const fetchAndSearchGames = async () => {
+      if (view === 'list') {
+        if (searchQuery.length >= 3) {
+          try {
+            const response = await axios.get(`https://contaminados.meseguercr.com/api/games`, {
+              params: {
+                name: searchQuery,
+                status: 'lobby',
+                page: 0,
+                limit: 50
+              }
+            });
+            if (response.status === 200) {
+              setFilteredGames(response.data.data);
+            } else {
+              console.error('Error fetching games:', response.statusText);
+            }
+          } catch (error) {
+            console.error('Error fetching games:', error);
+          }
+        } else {
+          fetchGames();
+        }
+      }
+    };
+  
+    fetchAndSearchGames();
+  }, [view, searchQuery]);
+
+  // Manejar el formulario de unirse a la partida
+  const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (selectedGame) {
+      joinGame(selectedGame.id!, playerName, gamePassword);
+    }
+  };
 
   // Manejar el formulario de unirse a la partida
   const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -149,7 +259,6 @@ export default function Home() {
     setSelectedGame(game);
     setView('joinGame'); // Cambiar a la vista de unirse a la partida
   };
-
   return (
     <div className="container mt-5">
       <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
@@ -202,8 +311,7 @@ export default function Home() {
           <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
-
-      {view === 'list' && (
+    {view === 'list' && (
         <div className="mt-4">
           <h2>Lista de Partidas Disponibles</h2>
           <input
@@ -213,6 +321,52 @@ export default function Home() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <button type="button" className="btn btn-primary mb-3" onClick={() => handleSearch(0)}>Buscar</button>
+          <table className="table table-bordered">
+            <thead>
+              <tr>
+                <th>Nombre de la Partida</th>
+                <th>Propietario</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(filteredGames) && filteredGames.length > 0 ? (
+                filteredGames.map((game) => (
+                  <tr key={game.id}>
+                    <td>{game.name}</td>
+                    <td>{game.owner}</td>
+                    <td className="text-end">
+                      <button className="btn btn-success">Unirse</button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3}>No hay partidas disponibles</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="d-flex justify-content-between">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleSearch(currentPage - 1)}
+              disabled={currentPage === 0}
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleSearch(currentPage + 1)}
+              disabled={filteredGames.length < limit}
+            >
+              Siguiente
+            </button>
+          </div>
+          <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
           <button type="button" className="btn btn-primary mb-3" >Buscar</button>
 
           {games.length === 0 ? (
@@ -245,7 +399,6 @@ export default function Home() {
           )}
         </div>
       )}
-
       {/* Modal */}
       <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex="-1">
         <div className="modal-dialog">
@@ -272,7 +425,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
       {view === 'joinGame' && selectedGame && (
         <form onSubmit={handleJoinGameSubmit} className="mt-4">
           <h2>Unirse a la Partida</h2>
@@ -327,7 +479,8 @@ export default function Home() {
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
         </div>
-      )}
+      )} 
+
     </div>
   );
 }
