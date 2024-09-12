@@ -301,7 +301,7 @@ export default function Home() {
               )}
             </tbody>
           </table>
-          <div className="d-flex justify-content-between">
+          <div className="gap-3 d-md-flex justify-content-md-end mb-3">
             <button
               type="button"
               className="btn btn-secondary"
