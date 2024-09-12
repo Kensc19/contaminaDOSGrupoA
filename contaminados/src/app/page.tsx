@@ -1,8 +1,15 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+
+interface Game {
+  id: string;
+  name: string;
+  owner: string;
+}
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import { FaCog } from 'react-icons/fa';
+import axios from 'axios';
 
 export default function Home() {
   const [view, setView] = useState('home');
@@ -11,10 +18,9 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [backendAddress, setBackendAddress] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-
-  const filteredGames: Game[] = games.filter(game =>
-    game.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [filteredGames, setFilteredGames] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [limit, setLimit] = useState(10);
 
   const fetchGames = async () => {
     try {
@@ -23,8 +29,10 @@ export default function Home() {
         const result = await response.json();
         if (Array.isArray(result.data)) {
           setGames(result.data);
+          setFilteredGames(result.data.slice(0, limit));
         } else {
           setGames([]);
+          setFilteredGames([]);
         }
       } else {
         console.error('Error al obtener las partidas');
@@ -56,11 +64,61 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    if (view === 'list') {
-      fetchGames();
+  const handleSearch = async (page = 0) => {
+    if (searchQuery.length >= 3) {
+      try {
+        const response = await axios.get(`https://contaminados.akamai.meseguercr.com/api/games`, {
+          params: {
+            name: searchQuery,
+            status: 'lobby',
+            page: page,
+            limit: limit
+          }
+        });
+        if (response.status === 200) {
+          setFilteredGames(response.data.data);
+          setCurrentPage(page);
+        } else {
+          console.error('Error fetching games:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching games:', error);
+      }
+    } else {
+      setFilteredGames(games.slice(page * limit, (page + 1) * limit)); // Mostrar juegos paginados si la búsqueda es menor a 3 caracteres
+      setCurrentPage(page);
     }
-  }, [view]);
+  };
+  
+  useEffect(() => {
+    const fetchAndSearchGames = async () => {
+      if (view === 'list') {
+        if (searchQuery.length >= 3) {
+          try {
+            const response = await axios.get(`https://contaminados.meseguercr.com/api/games`, {
+              params: {
+                name: searchQuery,
+                status: 'lobby',
+                page: 0,
+                limit: 50
+              }
+            });
+            if (response.status === 200) {
+              setFilteredGames(response.data.data);
+            } else {
+              console.error('Error fetching games:', response.statusText);
+            }
+          } catch (error) {
+            console.error('Error fetching games:', error);
+          }
+        } else {
+          fetchGames();
+        }
+      }
+    };
+  
+    fetchAndSearchGames();
+  }, [view, searchQuery]);
 
   const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -119,8 +177,7 @@ export default function Home() {
           <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
-
-      {view === 'list' && (
+    {view === 'list' && (
         <div className="mt-4">
           <h2>Lista de Partidas</h2>
           <input
@@ -130,7 +187,7 @@ export default function Home() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button type="button" className="btn btn-primary mb-3" >Buscar</button>
+          <button type="button" className="btn btn-primary mb-3" onClick={() => handleSearch(0)}>Buscar</button>
           <table className="table table-bordered">
             <thead>
               <tr>
@@ -157,10 +214,27 @@ export default function Home() {
               )}
             </tbody>
           </table>
-          <button type="button" className="btn btn-secondary" onClick={() => setView('home')}>Volver</button>
+          <div className="d-flex justify-content-between">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleSearch(currentPage - 1)}
+              disabled={currentPage === 0}
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleSearch(currentPage + 1)}
+              disabled={filteredGames.length < limit}
+            >
+              Siguiente
+            </button>
+          </div>
+          <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
         </div>
       )}
-
       {/* Modal */}
       <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex="-1">
         <div className="modal-dialog">
