@@ -125,7 +125,7 @@ export default function Home() {
       if (response.ok) {
         const result: Game = await response.json();
         console.log('Unido a la partida:', result);
-
+        console.log(selectedGame) //BORRAR 
         if (result && result.players) {
           setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
         } else {
@@ -143,6 +143,65 @@ export default function Home() {
     } catch (error) {
       console.error('Error en la petición:', error);
       alert('Error en la petición: ' + error);
+    }
+  };
+
+
+  // Función para iniciar la partida
+  const startGame = async (gameId: string, playerName: string, password: string) => {
+    if (!selectedGame || !selectedGame.players) {
+      alert('No hay información suficiente sobre los jugadores.');
+      return;
+    }
+
+    const playerCount = selectedGame.players.length;
+
+    if (playerCount < 5) {
+      alert('Se necesitan al menos 5 jugadores para iniciar el juego.');
+      return;
+    }
+
+    if (playerCount > 10) {
+      alert('No puede haber más de 10 jugadores en el juego.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/start`, {
+        method: 'HEAD', // El método es HEAD
+        headers: {
+          'Content-Type': 'application/json',
+          'password': password,
+          'player': playerName,
+        },
+      });
+
+      if (response.ok) {
+        alert('Juego iniciado correctamente');
+      } else if (response.status === 401) {
+        alert('No autorizado para iniciar el juego.');
+      } else if (response.status === 403) {
+        alert('Acceso prohibido.');
+      } else if (response.status === 404) {
+        alert('Juego no encontrado.');
+      } else if (response.status === 409) {
+        alert('El juego ya ha sido iniciado.');
+      } else if (response.status === 428) {
+        alert('Se necesitan al menos 5 jugadores para iniciar el juego.');
+      } else {
+        alert('Error desconocido al intentar iniciar el juego.');
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      alert('Error al iniciar el juego: ' + error);
+    }
+  };
+
+  const handleStartGame = () => {
+    if (selectedGame && selectedGame.id && selectedGame.password) {
+      startGame(selectedGame.id, playerName, selectedGame.password);
+    } else {
+      alert('Faltan datos para iniciar el juego.');
     }
   };
 
@@ -213,202 +272,211 @@ export default function Home() {
   const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     createGame(gameDetails);
-  };
+    if (gameDetails.owner && gameDetails.name) setPlayerName(gameDetails.owner);  // Asignar el nombre del creador como "playerName"
+    };
 
-  const handleSelectGame = (game: Game) => {
-    setSelectedGame(game);
-    setView('joinGame'); // Cambiar a la vista de unirse a la partida
-  };
-  return (
-    <div className="container mt-5">
-      <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
-        <FaCog /> Configuración
-      </button>
+    const handleSelectGame = (game: Game) => {
+      setSelectedGame(game);
+      setView('joinGame'); // Cambiar a la vista de unirse a la partida
+    };
+    return (
+      <div className="container mt-5">
+        <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
+          <FaCog /> Configuración
+        </button>
 
-      {view === 'home' && (
-        <>
-          <h1 className="mb-4">Bienvenido</h1>
-          <div className="d-flex justify-content-around">
-            <button className="btn btn-primary" onClick={() => setView('create')}>Crear Partida</button>
-            <button className="btn btn-success" onClick={() => setView('list')}>Unirse a Partida</button>
-          </div>
-        </>
-      )}
-
-      {view === 'create' && (
-        <form onSubmit={handleCreateGame} className="mt-4">
-          <h2>Crear Partida</h2>
-          <div className="mb-3">
-            <label className="form-label">Nombre de la Partida</label>
-            <input
-              type="text"
-              className="form-control"
-              value={gameDetails.name}
-              onChange={(e) => setGameDetails({ ...gameDetails, name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Propietario</label>
-            <input
-              type="text"
-              className="form-control"
-              value={gameDetails.owner}
-              onChange={(e) => setGameDetails({ ...gameDetails, owner: e.target.value })}
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Contraseña</label>
-            <input
-              type="password"
-              className="form-control"
-              value={gameDetails.password}
-              onChange={(e) => setGameDetails({ ...gameDetails, password: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">Crear</button>
-          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
-        </form>
-      )}
-      {view === 'list' && (
-        <form onSubmit={handleJoinGameSubmit} className="mt-4">
-          <h2>Lista de Partidas Disponibles</h2>
-          <input
-            type="text"
-            className="form-control mb-3"
-            placeholder="Buscar partidas..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button type="button" className="btn btn-primary mb-3" onClick={() => handleSearch(0)}>Buscar</button>
-          <table className="table table-bordered">
-            <thead>
-              <tr>
-                <th>Nombre de la Partida</th>
-                <th>Propietario</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(filteredGames) && filteredGames.length > 0 ? (
-                filteredGames.map((game) => (
-                  <tr key={game.id}>
-                    <td>{game.name}</td>
-                    <td>{game.owner}</td>
-                    <td className="text-end">
-                      <button className="btn btn-success" onClick={() => handleSelectGame(game)}>Unirse</button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3}>No hay partidas disponibles</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="gap-3 d-md-flex justify-content-md-end mb-3">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => handleSearch(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => handleSearch(currentPage + 1)}
-              disabled={filteredGames.length < limit}
-            >
-              Siguiente
-            </button>
-          </div>
-          <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
-        </form>
-      )}
-      {/* Modal */}
-      <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex={-1}>
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Configuración</h5>
-              <button type="button" className="btn-close" onClick={() => setShowSettings(false)}></button>
+        {view === 'home' && (
+          <>
+            <h1 className="mb-4">Bienvenido</h1>
+            <div className="d-flex justify-content-around">
+              <button className="btn btn-primary" onClick={() => setView('create')}>Crear Partida</button>
+              <button className="btn btn-success" onClick={() => setView('list')}>Unirse a Partida</button>
             </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Dirección del Backend</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={backendAddress}
-                  onChange={(e) => setBackendAddress(e.target.value)}
-                />
+          </>
+        )}
+
+        {view === 'create' && (
+          <form onSubmit={handleCreateGame} className="mt-4">
+            <h2>Crear Partida</h2>
+            <div className="mb-3">
+              <label className="form-label">Nombre de la Partida</label>
+              <input
+                type="text"
+                className="form-control"
+                value={gameDetails.name}
+                onChange={(e) => setGameDetails({ ...gameDetails, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Propietario</label>
+              <input
+                type="text"
+                className="form-control"
+                value={gameDetails.owner}
+                onChange={(e) => setGameDetails({ ...gameDetails, owner: e.target.value })}
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Contraseña</label>
+              <input
+                type="password"
+                className="form-control"
+                value={gameDetails.password}
+                onChange={(e) => setGameDetails({ ...gameDetails, password: e.target.value })}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary">Crear</button>
+            <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
+          </form>
+        )}
+        {view === 'list' && (
+          <form onSubmit={handleJoinGameSubmit} className="mt-4">
+            <h2>Lista de Partidas Disponibles</h2>
+            <input
+              type="text"
+              className="form-control mb-3"
+              placeholder="Buscar partidas..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button type="button" className="btn btn-primary mb-3" onClick={() => handleSearch(0)}>Buscar</button>
+            <table className="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Nombre de la Partida</th>
+                  <th>Propietario</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(filteredGames) && filteredGames.length > 0 ? (
+                  filteredGames.map((game) => (
+                    <tr key={game.id}>
+                      <td>{game.name}</td>
+                      <td>{game.owner}</td>
+                      <td className="text-end">
+                        <button className="btn btn-success" onClick={() => handleSelectGame(game)}>Unirse</button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3}>No hay partidas disponibles</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <div className="gap-3 d-md-flex justify-content-md-end mb-3">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => handleSearch(currentPage - 1)}
+                disabled={currentPage === 0}
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => handleSearch(currentPage + 1)}
+                disabled={filteredGames.length < limit}
+              >
+                Siguiente
+              </button>
+            </div>
+            <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
+          </form>
+        )}
+        {/* Modal */}
+        <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Configuración</h5>
+                <button type="button" className="btn-close" onClick={() => setShowSettings(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Dirección del Backend</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={backendAddress}
+                    onChange={(e) => setBackendAddress(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-primary">Guardar</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cerrar</button>
               </div>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-primary">Guardar</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cerrar</button>
+          </div>
+        </div>
+        {view === 'joinGame' && selectedGame && (
+          <form onSubmit={handleJoinGameSubmit} className="mt-4">
+            <h2>Unirse a la Partida</h2>
+            <div className="mb-3">
+              <label className="form-label">Nombre de Jugador</label>
+              <input
+                type="text"
+                className="form-control"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                required
+              />
             </div>
-          </div>
-        </div>
-      </div>
-      {view === 'joinGame' && selectedGame && (
-        <form onSubmit={handleJoinGameSubmit} className="mt-4">
-          <h2>Unirse a la Partida</h2>
-          <div className="mb-3">
-            <label className="form-label">Nombre de Jugador</label>
-            <input
-              type="text"
-              className="form-control"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Contraseña (si es necesaria)</label>
-            <input
-              type="password"
-              className="form-control"
-              value={gamePassword}
-              onChange={(e) => setGamePassword(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">Unirse</button>
-          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('list')}>
-            Cancelar
-          </button>
-        </form>
-      )}
-      {view === 'gameDetails' && selectedGame && (
-        <div className="mt-4">
-          <h2>Detalles de la Partida: {selectedGame.name}</h2>
-          <p>Propietario: {selectedGame.owner}</p>
-          <p>Contraseña: {selectedGame.password ? 'Sí' : 'No'}</p>
-          <h3>Jugadores:</h3>
-          {selectedGame.players && selectedGame.players.length > 0 ? (
-            <ul>
-              {selectedGame.players.map((player, index) => (
-                <li key={index}>{player}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay jugadores en la partida.</p>
-          )}
-          <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
-            Volver a la Lista
-          </button>
-        </div>
-      )}
+            <div className="mb-3">
+              <label className="form-label">Contraseña (si es necesaria)</label>
+              <input
+                type="password"
+                className="form-control"
+                value={gamePassword}
+                onChange={(e) => setGamePassword(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary">Unirse</button>
+            <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('list')}>
+              Cancelar
+            </button>
+          </form>
+        )}
+        {view === 'gameDetails' && selectedGame && (
+          <div className="mt-4">
+            <h2>Detalles de la Partida: {selectedGame.name}</h2>
+            <p>Propietario: {selectedGame.owner}</p>
+            <p>Contraseña: {selectedGame.password ? 'Sí' : 'No'}</p>
+            <h3>Jugadores:</h3>
+            {selectedGame.players && selectedGame.players.length > 0 ? (
+              <ul>
+                {selectedGame.players.map((player, index) => (
+                  <li key={index}>{player}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No hay jugadores en la partida.</p>
+            )}
+            <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
+              Volver a la Lista
+            </button>
 
-      {errorMessage && (
-        <div className="alert alert-danger mt-4" role="alert">
-          {errorMessage}
-        </div>
-      )}
-    </div>
-  );
-}
+            {/* Mostrar el botón solo si el jugador es el propietario */}
+            {selectedGame.owner === playerName && (
+              <button type="button" className="btn btn-primary mt-4" onClick={handleStartGame}>
+                Iniciar Juego
+              </button>
+            )}
+
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="alert alert-danger mt-4" role="alert">
+            {errorMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
