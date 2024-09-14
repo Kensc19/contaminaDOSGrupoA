@@ -43,7 +43,8 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
   const [rounds, setrounds] = useState([]);
-  const [loading, setloading] = useState(true);  
+  const [loading, setloading] = useState(true);
+  const [error, setError] = useState('');
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -140,7 +141,7 @@ export default function Home() {
       const fetchRounds = async() => {
         try{
           setloading(true);
-          setErrorMessage('');
+          setError('');
 
           //Crear la petición de las rondas a la API
           const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games/{gameId}/rounds', {
@@ -154,25 +155,26 @@ export default function Home() {
 
           if (response.ok){ 
             const data = await response.json();
+            console.log(data);
             setrounds(data.data)
           }else if(response.status === 400){
-            setErrorMessage('Bad Request'); 
+            setError('Bad Request'); 
           }else if(response.status === 401){
-            setErrorMessage('Credenciales Inválidas');
+            setError('Credenciales Inválidas');
           }else if(response.status === 403){
-            setErrorMessage('No forma parte del juego');
+            setError('No forma parte del juego');
           }else if(response.status === 404){
-            setErrorMessage('Not found');
+            setError('Not found');
           }
           else if(response.status === 408){
-            setErrorMessage('Request Timeout');
+            setError('Request Timeout');
           }
           else{
-            setErrorMessage('Error desconocido');
+            setError('Error desconocido');
           }
         }
         catch(err){
-          setErrorMessage('Ocurrió un error al hacer fetch sobre las rondas');
+          setError('Ocurrió un error al hacer fetch sobre las rondas');
         }finally{//cerrar el estado 'cargando'
           setloading(false);
         }
@@ -183,6 +185,31 @@ export default function Home() {
       }
 
     },[gameId, playerName, gamePassword]);
+
+    return(
+      <div>
+        {loading && <p>Cargando las rondas</p>}
+        {error && <p> Error: {error}</p>}
+        {!loading && !error &&(
+          <ul>
+            {rounds.length > 0 ?(
+              rounds.map((round) => (
+                <li key= {round.id}>
+                  <p>Leader: {round.leader}</p>
+                  <p>Status: {round.status}</p>
+                  <p>Phase: {round.phase}</p>
+                </li>
+              ))
+            ) : (
+              <p>No rounds found</p>
+            )}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
+//  export default GameRounds;
 
     
  
@@ -441,9 +468,37 @@ export default function Home() {
           <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
             Volver a la Lista
           </button>
+          <button onClick={() => setView('rounds')}>
+            Ver Rondas
+          </button>
+
         </div>
       )}
+      {
+        view === 'rounds' && (
+          <div>
+            {loading && <p>Loading rounds...</p>}
+            {error && <p>Error: {error}</p>}
+            {!loading && !error && rounds.length > 0 ? (
+              <ul>
+                {rounds.map((round) => (
+                  <li key={round.id}>
+                    <p>Leader: {round.leader}</p>
+                    <p>Status: {round.status}</p>
+                    <p>Phase: {round.phase}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No rounds found</p>
+            )}
 
+          <button onClick={() => setView('gameDetails')}>
+            Volver
+          </button>
+          </div>
+  )
+}
       {errorMessage && (
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
