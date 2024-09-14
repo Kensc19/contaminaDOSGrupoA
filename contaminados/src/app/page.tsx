@@ -20,22 +20,6 @@ interface ApiResponse {
   others: any;
 }
 
-// Definir el tipo Game para las partidas
-interface Game {
-  name: string;
-  owner: string;
-  password?: string;
-  id?: string;
-  players?: string[];  // Lista de jugadores en la sala
-}
-
-interface ApiResponse {
-  status: number;
-  msg: string;
-  data: Game;
-  others: any;
-}
-
 export default function Home() {
 
   useEffect(() => {
@@ -58,6 +42,8 @@ export default function Home() {
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
+  const [rounds, setrounds] = useState([]);
+  const [loading, setloading] = useState(true);  
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -146,6 +132,60 @@ export default function Home() {
     }
   };
 
+  
+  //Traer todas las rondas 
+  const getRounds = async(gameId: string, playerName:string, password?: string) => {
+    
+    useEffect(() => {
+      const fetchRounds = async() => {
+        try{
+          setloading(true);
+          setErrorMessage('');
+
+          //Crear la petición de las rondas a la API
+          const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games/{gameId}/rounds', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'password': gamePassword,
+              'player': playerName,
+            },
+          });
+
+          if (response.ok){ 
+            const data = await response.json();
+            setrounds(data.data)
+          }else if(response.status === 400){
+            setErrorMessage('Bad Request'); 
+          }else if(response.status === 401){
+            setErrorMessage('Credenciales Inválidas');
+          }else if(response.status === 403){
+            setErrorMessage('No forma parte del juego');
+          }else if(response.status === 404){
+            setErrorMessage('Not found');
+          }
+          else if(response.status === 408){
+            setErrorMessage('Request Timeout');
+          }
+          else{
+            setErrorMessage('Error desconocido');
+          }
+        }
+        catch(err){
+          setErrorMessage('Ocurrió un error al hacer fetch sobre las rondas');
+        }finally{//cerrar el estado 'cargando'
+          setloading(false);
+        }
+      };
+      
+      if (selectedGame && playerName){
+      fetchRounds();
+      }
+
+    },[gameId, playerName, gamePassword]);
+
+    
+ 
   const handleSearch = async (page = 0) => {
     if (searchQuery.length >= 3) {
       try {
