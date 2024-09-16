@@ -10,7 +10,10 @@ interface Game {
   owner: string;
   password?: string;
   id?: string;
-  players?: string[];  // Lista de jugadores en la sala
+  players?: string[];
+  status?: string;
+  enemies?: string[];
+  currentRound?: number;
 }
 
 interface ApiResponse {
@@ -58,6 +61,7 @@ export default function Home() {
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
+  const MAX_PLAYERS = 4 // Establecer el límite máximo de jugadores por sala
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -95,6 +99,8 @@ export default function Home() {
       if (response.ok) {
         const result: ApiResponse = await response.json();
         setSelectedGame(result.data);
+        setGamePassword(game.password || ''); // Almacenar la contraseña en el estado
+        setPlayerName(game.owner); // Establecer el nombre del jugador como el propietario
         fetchGames();
         setView('gameDetails');
       } else {
@@ -107,38 +113,68 @@ export default function Home() {
     }
   };
 
-  // Función para unirse a una partida
   const joinGame = async (gameId: string, playerName: string, password?: string) => {
     try {
-      // Construir el cuerpo de la petición con el nombre del jugador
-      const bodyData = { player: playerName };
-
-      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
-        method: 'PUT',
+      // Obtener los detalles del juego para verificar el estado actual
+      const gameDetailsResponse = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'password': password || '', // Contraseña en el header si existe
-        },
-        body: JSON.stringify(bodyData), // Cuerpo con el nombre del jugador
+          'accept': 'application/json',
+          'password': password || '',
+          'player': playerName
+        }
       });
 
-      if (response.ok) {
-        const result: Game = await response.json();
-        console.log('Unido a la partida:', result);
+      if (gameDetailsResponse.status === 401) {
+        // El jugador no es parte del juego, puede intentar unirse
+        console.log('El jugador no es parte del juego, puede intentar unirse.');
 
-        if (result && result.players) {
-          setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
-        } else {
-          console.warn('Los detalles de la partida no contienen jugadores o no se han recibido correctamente');
+        const gameDetails: ApiResponse = await gameDetailsResponse.json();
+
+        // Validar límite de jugadores
+        if (gameDetails.data.players && gameDetails.data.players.length >= MAX_PLAYERS) {
+          alert('La sala está llena. No se pueden unir más jugadores.');
+          return;
         }
-        setView('gameDetails'); // Cambiar la vista para mostrar los detalles de la partida
-      } else if (response.status === 400) {
-        const errorResult = await response.json();
-        console.error('Error al unirse a la partida', errorResult);
-        alert('No se pudo unir a la partida. ' + (errorResult.msg || 'Verifica si la contraseña es correcta.'));
+
+        // Construir el cuerpo de la petición con el nombre del jugador
+        const bodyData = { player: playerName };
+
+        const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'password': password || '', // Contraseña en el header si existe
+          },
+          body: JSON.stringify(bodyData),
+        });
+
+        if (response.ok) {
+          const result: ApiResponse = await response.json();
+          console.log('Unido a la partida:', result.data);
+
+          if (result.data && result.data.players) {
+            setSelectedGame(result.data);
+            setGamePassword(password || ''); // Almacenar la contraseña en el estado
+          } else {
+            console.warn('Los detalles de la partida no contienen jugadores o no se han recibido correctamente');
+          }
+          setView('gameDetails');
+        } else if (response.status === 400) {
+          const errorResult = await response.json();
+          console.error('Error al unirse a la partida', errorResult);
+          alert('No se pudo unir a la partida. ' + (errorResult.msg || 'Verifica si la contraseña es correcta.'));
+        } else {
+          console.error('Error desconocido al unirse a la partida');
+          alert('Error desconocido al unirse a la partida.');
+        }
+      } else if (gameDetailsResponse.ok) {
+        // El jugador ya es parte del juego, no se le permite unirse nuevamente
+        alert('El jugador ya es parte del juego. No se puede unir nuevamente.');
       } else {
-        console.error('Error desconocido al unirse a la partida');
-        alert('Error desconocido al unirse a la partida.');
+        const errorResult = await gameDetailsResponse.json();
+        console.error('Error al obtener los detalles del juego', errorResult);
+        alert('Error al obtener los detalles del juego: ' + (errorResult.msg || `Status: ${gameDetailsResponse.status}`));
       }
     } catch (error) {
       console.error('Error en la petición:', error);
@@ -219,6 +255,53 @@ export default function Home() {
     setSelectedGame(game);
     setView('joinGame'); // Cambiar a la vista de unirse a la partida
   };
+  const fetchGameDetails = async (gameId: string) => {
+    try {
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'password': gamePassword, // Utilizar la contraseña almacenada en el estado
+          'player': playerName
+        }
+      });
+      if (response.ok) {
+        const result: ApiResponse = await response.json();
+        setSelectedGame(result.data);
+      } else {
+        const errorResult = await response.json();
+        console.error('Error al obtener los detalles del juego', errorResult);
+
+        if (response.status === 400) {
+          console.error('Error 400: Bad Request. Detalles:', errorResult);
+          alert(`Error 400: Bad Request. ${errorResult.msg || 'Verifica los parámetros de la solicitud.'}`);
+        } else {
+          alert('Error al obtener los detalles del juego: ' + (errorResult.msg || `Status: ${response.status}`));
+        }
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      alert('Error en la petición: ' + error);
+    }
+  };
+  // Función para refrescar toda la información del juego
+  const handleRefreshGame = async () => {
+    if (selectedGame && selectedGame.id) {
+      if (playerName.trim() === '') {
+        alert('El nombre del jugador es obligatorio.');
+        return;
+      }
+      try {
+        await fetchGameDetails(selectedGame.id);
+      } catch (error) {
+        console.error('Error al refrescar el juego:', error);
+        alert('Error al refrescar el juego: ' + error);
+      }
+    } else {
+      console.error('No hay un juego seleccionado o el ID del juego es inválido');
+      alert('No se puede refrescar: no hay un juego seleccionado o el ID es inválido');
+    }
+  };
   return (
     <div className="container mt-5">
       <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
@@ -280,6 +363,12 @@ export default function Home() {
             placeholder="Buscar partidas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault(); // Prevenir el comportamiento por defecto del Enter
+                handleSearch(0); // Iniciar la búsqueda desde la primera página
+              }
+            }}
           />
           <button type="button" className="btn btn-primary mb-3" onClick={() => handleSearch(0)}>Buscar</button>
           <table className="table table-bordered">
@@ -387,7 +476,9 @@ export default function Home() {
         <div className="mt-4">
           <h2>Detalles de la Partida: {selectedGame.name}</h2>
           <p>Propietario: {selectedGame.owner}</p>
+          <p>Estado: {selectedGame.status}</p>
           <p>Contraseña: {selectedGame.password ? 'Sí' : 'No'}</p>
+          <p>Ronda Actual: {selectedGame.currentRound}</p>
           <h3>Jugadores:</h3>
           {selectedGame.players && selectedGame.players.length > 0 ? (
             <ul>
@@ -398,12 +489,24 @@ export default function Home() {
           ) : (
             <p>No hay jugadores en la partida.</p>
           )}
+          <h3>Enemigos:</h3>
+          {selectedGame.enemies && selectedGame.enemies.length > 0 ? (
+            <ul>
+              {selectedGame.enemies.map((enemy, index) => (
+                <li key={index}>{enemy}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay enemigos en la partida.</p>
+          )}
           <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
             Volver a la Lista
           </button>
+          <button type="button" className="btn btn-primary mt-4 ms-2" onClick={handleRefreshGame}>
+            Refrescar Información del Juego
+          </button>
         </div>
       )}
-
       {errorMessage && (
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
