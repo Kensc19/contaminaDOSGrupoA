@@ -61,7 +61,7 @@ export default function Home() {
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
-  const MAX_PLAYERS = 4 // Establecer el límite máximo de jugadores por sala
+  const MAX_PLAYERS = 10 // Establecer el límite máximo de jugadores por sala
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
