@@ -125,7 +125,7 @@ export default function Home() {
       if (response.ok) {
         const result: Game = await response.json();
         console.log('Unido a la partida:', result);
-        console.log(selectedGame) //BORRAR 
+ 
         if (result && result.players) {
           setSelectedGame(result); // Establecer los detalles de la partida con los jugadores
         } else {
