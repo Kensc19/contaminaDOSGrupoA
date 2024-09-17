@@ -238,6 +238,56 @@ export default function Home() {
     fetchAndSearchGames();
   }, [view, searchQuery]);
 
+  // Función para iniciar la partida
+  const startGame = async (gameId: string, playerName: string, password: string) => {
+    if (!selectedGame || !selectedGame.players) {
+      alert('No hay información suficiente sobre los jugadores.');
+      return;
+    }
+
+    const playerCount = selectedGame.players.length;
+
+    if (playerCount < 5) {
+      alert('Se necesitan al menos 5 jugadores para iniciar el juego.');
+      return;
+    }
+
+    if (playerCount > 10) {
+      alert('No puede haber más de 10 jugadores en el juego.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/start`, {
+        method: 'HEAD', // El método es HEAD
+        headers: {
+          'Content-Type': 'application/json',
+          'password': password,
+          'player': playerName,
+        },
+      });
+
+      if (response.ok) {
+        alert('Juego iniciado correctamente');
+        setView('gameStarted');  // Cambiar la vista a "gameStarted"
+      } else {
+        handleStartGameErrors(response);
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      alert('Error al iniciar el juego: ' + error);
+    }
+  };
+
+  const handleStartGame = () => {
+    if (selectedGame && selectedGame.id && selectedGame.password) {
+      startGame(selectedGame.id, playerName, selectedGame.password);
+    } else {
+      alert('Faltan datos para iniciar el juego.');
+    }
+  };
+
+
   // Manejar el formulario de unirse a la partida
   const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -302,6 +352,25 @@ export default function Home() {
       alert('No se puede refrescar: no hay un juego seleccionado o el ID es inválido');
     }
   };
+
+  const handleStartGameErrors = (response: Response) => {
+    if (response.status === 401) {
+      alert('No autorizado para iniciar el juego.');
+    } else if (response.status === 403) {
+      alert('Acceso prohibido.');
+    } else if (response.status === 404) {
+      alert('Juego no encontrado.');
+    } else if (response.status === 409) {
+      alert('El juego ya ha sido iniciado.');
+    } else if (response.status === 428) {
+      alert('Se necesitan al menos 5 jugadores para iniciar el juego.');
+    } else {
+      alert('Error desconocido al intentar iniciar el juego.');
+    }
+  };
+
+
+
   return (
     <div className="container mt-5">
       <button type="button" className="btn btn-secondary float-end" onClick={() => setShowSettings(true)}>
@@ -505,8 +574,24 @@ export default function Home() {
           <button type="button" className="btn btn-primary mt-4 ms-2" onClick={handleRefreshGame}>
             Refrescar Información del Juego
           </button>
+
+          {/* Mostrar el botón solo si el jugador es el propietario */}
+          {selectedGame.owner === playerName && (
+            <button type="button" className="btn btn-primary mt-4" onClick={handleStartGame}>
+              Iniciar Juego
+            </button>
+          )}
+
         </div>
       )}
+
+      {view === 'gameStarted' && (
+        <div className="mt-4">
+          <h2>El juego ha comenzado</h2>
+          <p>¡Buena suerte a todos los jugadores!</p>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
