@@ -48,9 +48,8 @@ export default function Home() {
   const MAX_PLAYERS = 10 // Establecer el límite máximo de jugadores por sala
   const [rounds, setrounds] = useState([]);  
   const [error, setError] = useState('');
+  const [round, setRound] = useState([]);
   //const [gameId, setGameId] = useState<string>('');
-
- 
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -173,7 +172,6 @@ export default function Home() {
     }
   };
 
-  
   //Función para traer la información de la ronda
   const getAllRounds = async(gameId: string, playerName: string, password?: string) => {
         try{          
@@ -194,35 +192,74 @@ export default function Home() {
             console.log(data);
             setrounds(data.data)
           }else if(response.status === 400){
-            setError('Bad Request'); 
+            alert('Bad Request'); 
           }else if(response.status === 401){
-            setError('Credenciales Inválidas');
+            alert('Credenciales Inválidas');
           }else if(response.status === 403){
-            setError('No forma parte del juego');
+            alert('No forma parte del juego');
           }else if(response.status === 404){
-            setError('Not found');
+            alert('Not found');
           }
           else if(response.status === 408){
-            setError('Request Timeout');
+            alert('Request Timeout');
           }
           else{
-            setError('Error desconocido');
+            alert('Error desconocido');
           }
         }
         catch(err){
-          setError('Ocurrió un error al hacer fetch sobre las rondas');
+          alert('Ocurrió un error al traer la información de las rondas'+ err);
         }
 
   }
 
-
-const handleGetAllRounds = () => {
-  if(selectedGame && selectedGame.id && selectedGame.password){
-    getAllRounds(selectedGame.id, playerName, selectedGame.password);
-  }else{
-    alert('Error al traer los datos')
+  //Ejecutar getAllRounds
+  const handleGetAllRounds = () => {
+    if(selectedGame && selectedGame.id && selectedGame.password){
+      getAllRounds(selectedGame.id, playerName, selectedGame.password);
+    }else{
+      alert('Error al traer los datos')
+    }
   }
-}
+
+  //Función para traer información de una ronda
+  const getRound =  async(gameId: string, roundId: string, playerName:string, password?: string) =>{
+    try{
+      //crear la petición a la API
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,{
+        method:'GET',
+        headers: {
+          'accept': 'application/json',
+          'password': gamePassword,
+          'player': playerName
+        }
+      });
+      
+      if (response.ok){             
+        const data = await response.json();
+        console.log(data);
+        setRound(data.data)
+      }else if(response.status === 400){
+        alert('Bad Request'); 
+      }else if(response.status === 401){
+        alert('Credenciales Inválidas');
+      }else if(response.status === 403){
+        alert('No forma parte del juego');
+      }else if(response.status === 404){
+        alert('Not found');
+      }
+      else if(response.status === 408){
+        alert('Request Timeout');
+      }
+      else{
+        alert('Error desconocido');
+      }
+
+    }catch(err){
+      alert('Ocurrió un error al traer la información de la ronda'+ err);
+    }
+
+  };
 
   //Función para buscar la partida
   const handleSearch = async (page = 0) => {
@@ -635,7 +672,7 @@ const handleGetAllRounds = () => {
           <div>
             <button type= "button" className="btn btn-primary mt-4" onClick={handleGetAllRounds}>
               Obtener Rondas
-            </button>
+            </button>    
             <table className="table">
               <thead>
                 <tr>
@@ -654,12 +691,12 @@ const handleGetAllRounds = () => {
                     <td>{round.leader}</td>
                     <td>{round.status}</td>
                     <td>{round.phase}</td>
-                    <td>{round.group}</td>
-                    <td>{round.vote}</td>
-                  </tr>
+                    <td>{round.group && round.group.length > 0 ? round.group.join(', ') : 'Sin grupo'}</td>
+                    <td>{round.votes && round.votes.length > 0 ? round.votes.join(', ') : 'Sin votos'}</td>
+                  </tr>                  
                 ))}
               </tbody>
-            </table>
+            </table>            
           </div>
         </div>
       )}
