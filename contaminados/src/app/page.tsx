@@ -45,10 +45,12 @@ export default function Home() {
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [limit, setLimit] = useState(10);
-  const [rounds, setrounds] = useState([]);
-  const [loading, setloading] = useState(true);
-  const [error, setError] = useState('');
   const MAX_PLAYERS = 10 // Establecer el límite máximo de jugadores por sala
+  const [rounds, setrounds] = useState([]);  
+  const [error, setError] = useState('');
+  //const [gameId, setGameId] = useState<string>('');
+
+ 
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -73,6 +75,7 @@ export default function Home() {
     }
   };
 
+  //Función para crear una partida
   const createGame = async (game: Game) => {
     try {
       const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games', {
@@ -100,6 +103,7 @@ export default function Home() {
     }
   };
 
+  //Función para unirse a una partida
   const joinGame = async (gameId: string, playerName: string, password?: string) => {
     try {
       // Obtener los detalles del juego para verificar el estado actual
@@ -116,7 +120,7 @@ export default function Home() {
         // El jugador no es parte del juego, puede intentar unirse
         console.log('El jugador no es parte del juego, puede intentar unirse.');
 
-        const gameDetails: ApiResponse = await gameDetailsResponse.json();
+        const gameDetails: ApiResponse = await gameDetailsResponse.json();        
 
         // Validar límite de jugadores
         if (gameDetails.data.players && gameDetails.data.players.length >= MAX_PLAYERS) {
@@ -170,26 +174,22 @@ export default function Home() {
   };
 
   
-  //Traer todas las rondas 
-  const getRounds = async(gameId: string, playerName:string, password?: string) => {
-    
-    useEffect(() => {
-      const fetchRounds = async() => {
-        try{
-          setloading(true);
+  //Función para traer la información de la ronda
+  const getAllRounds = async(gameId: string, playerName: string, password?: string) => {
+        try{          
           setError('');
 
           //Crear la petición de las rondas a la API
-          const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games/{gameId}/rounds', {
+          const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds`, {
             method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
+              'accept': 'application/json',
               'password': gamePassword,
-              'player': playerName,
-            },
+              'player': playerName
+            }
           });
 
-          if (response.ok){ 
+          if (response.ok){             
             const data = await response.json();
             console.log(data);
             setrounds(data.data)
@@ -211,44 +211,20 @@ export default function Home() {
         }
         catch(err){
           setError('Ocurrió un error al hacer fetch sobre las rondas');
-        }finally{//cerrar el estado 'cargando'
-          setloading(false);
         }
-      };
-      
-      if (selectedGame && playerName){
-      fetchRounds();
-      }
 
-    },[gameId, playerName, gamePassword]);
+  }
 
-    return(
-      <div>
-        {loading && <p>Cargando las rondas</p>}
-        {error && <p> Error: {error}</p>}
-        {!loading && !error &&(
-          <ul>
-            {rounds.length > 0 ?(
-              rounds.map((round) => (
-                <li key= {round.id}>
-                  <p>Leader: {round.leader}</p>
-                  <p>Status: {round.status}</p>
-                  <p>Phase: {round.phase}</p>
-                </li>
-              ))
-            ) : (
-              <p>No rounds found</p>
-            )}
-          </ul>
-        )}
-      </div>
-    );
-  };
 
-//  export default GameRounds;
+const handleGetAllRounds = () => {
+  if(selectedGame && selectedGame.id && selectedGame.password){
+    getAllRounds(selectedGame.id, playerName, selectedGame.password);
+  }else{
+    alert('Error al traer los datos')
+  }
+}
 
-    
- 
+  //Función para buscar la partida
   const handleSearch = async (page = 0) => {
     if (searchQuery.length >= 3) {
       try {
@@ -372,6 +348,7 @@ export default function Home() {
     setSelectedGame(game);
     setView('joinGame'); // Cambiar a la vista de unirse a la partida
   };
+  //Función para traer los datos del juegoi
   const fetchGameDetails = async (gameId: string) => {
     try {
       const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}`, {
@@ -434,9 +411,7 @@ export default function Home() {
     } else {
       alert('Error desconocido al intentar iniciar el juego.');
     }
-  };
-
-
+  }
 
   return (
     <div className="container mt-5">
@@ -638,9 +613,6 @@ export default function Home() {
           <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
             Volver a la Lista
           </button>
-          <button onClick={() => setView('rounds')}>
-            Ver Rondas
-          </button>
 
           <button type="button" className="btn btn-primary mt-4 ms-2" onClick={handleRefreshGame}>
             Refrescar Información del Juego
@@ -656,36 +628,42 @@ export default function Home() {
         </div>
       )}
 
-      {view === 'gameStarted' && (
+      {view === 'gameStarted' && selectedGame && (
         <div className="mt-4">
           <h2>El juego ha comenzado</h2>
           <p>¡Buena suerte a todos los jugadores!</p>
+          <div>
+            <button type= "button" className="btn btn-primary mt-4" onClick={handleGetAllRounds}>
+              Obtener Rondas
+            </button>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Líder</th>
+                  <th>Estado</th>
+                  <th>Fase</th>
+                  <th>Grupo</th>
+                  <th>Votos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rounds.map((round) => (
+                  <tr key={round.id}>
+                    <td>{round.id}</td>
+                    <td>{round.leader}</td>
+                    <td>{round.status}</td>
+                    <td>{round.phase}</td>
+                    <td>{round.group}</td>
+                    <td>{round.vote}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {
-        view === 'rounds' && (
-          <div>
-            {loading && <p>Loading rounds...</p>}
-            {error && <p>Error: {error}</p>}
-            {!loading && !error && rounds.length > 0 ? (
-              <ul>
-                {rounds.map((round) => (
-                  <li key={round.id}>
-                    <p>Leader: {round.leader}</p>
-                    <p>Status: {round.status}</p>
-                    <p>Phase: {round.phase}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No rounds found</p>
-            )}
-
-          <button onClick={() => setView('gameDetails')}>
-            Volver
-          </button>
-          </div>
-  )
 }
       {errorMessage && (
         <div className="alert alert-danger mt-4" role="alert">
