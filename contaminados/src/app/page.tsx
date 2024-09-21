@@ -14,7 +14,7 @@ interface Game {
 interface ApiResponse {
   status: number;
   msg: string;
-  data: Game;
+  data: Game | Game[]; // Puede ser un array de juegos o un solo juego
   others: any;
 }
 
@@ -64,7 +64,7 @@ export default function Home() {
         console.log('Partida creada:', result);
 
         // Usar la respuesta directamente para redirigir al usuario
-        setSelectedGame(result.data);
+        setSelectedGame(result.data as Game);
         setView('gameDetails'); // Redirigir a los detalles de la partida
       } else {
         console.error('Error al crear la partida');
@@ -114,6 +114,39 @@ export default function Home() {
       alert('Error en la petición: ' + error);
     }
   };
+
+  const refreshGameDetails = async () => {
+    if (selectedGame?.id) {
+      try {
+        const bodyData = { player: playerName }; 
+  
+        const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer YOUR_ACCESS_TOKEN`, // Reemplaza con el token adecuado
+          },
+          body: JSON.stringify(bodyData),
+        });
+  
+        if (response.ok) {
+          const result: Game = await response.json();
+          console.log('Detalles actualizados de la partida:', result);
+          setSelectedGame(result);
+        } else {
+          const errorResult = await response.json();
+          console.error('Error al obtener los detalles de la partida', errorResult);
+          setErrorMessage(`Error ${response.status}: ${errorResult.msg || 'Detalles no disponibles'}`);
+        }
+      } catch (error) {
+        console.error('Error en la petición:', error);
+        setErrorMessage('Error en la petición: ' + error);
+      }
+    } else {
+      setErrorMessage('No se puede refrescar sin un ID de partida válido.');
+    }
+  };
+  
 
   // Efecto para cargar las partidas cuando se muestra la vista de lista
   useEffect(() => {
@@ -223,14 +256,18 @@ export default function Home() {
               </table>
             </div>
           )}
+          <button className="btn btn-secondary mt-2" onClick={() => setView('home')}>Volver al Inicio</button>
         </div>
       )}
 
       {view === 'joinGame' && selectedGame && (
         <form onSubmit={handleJoinGameSubmit} className="mt-4">
           <h2>Unirse a la Partida</h2>
+          <p><strong>Nombre:</strong> {selectedGame.name}</p>
+          <p><strong>Propietario:</strong> {selectedGame.owner}</p>
+          <p><strong>Contraseña:</strong> {selectedGame.password}</p>
           <div className="mb-3">
-            <label className="form-label">Nombre de Jugador</label>
+            <label className="form-label">Nombre del Jugador</label>
             <input
               type="text"
               className="form-control"
@@ -249,36 +286,20 @@ export default function Home() {
             />
           </div>
           <button type="submit" className="btn btn-primary">Unirse</button>
-          <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('list')}>
-            Cancelar
-          </button>
+          <button className="btn btn-secondary mt-2" onClick={() => setView('home')}>Volver al Inicio</button>
         </form>
       )}
 
       {view === 'gameDetails' && selectedGame && (
         <div className="mt-4">
-          <h2>Detalles de la Partida: {selectedGame.name}</h2>
-          <p>Propietario: {selectedGame.owner}</p>
-          <p>Contraseña: {selectedGame.password ? 'Sí' : 'No'}</p>
-          <h3>Jugadores:</h3>
-          {selectedGame.players && selectedGame.players.length > 0 ? (
-            <ul>
-              {selectedGame.players.map((player, index) => (
-                <li key={index}>{player}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay jugadores en la partida.</p>
-          )}
-          <button type="button" className="btn btn-secondary mt-4" onClick={() => setView('list')}>
-            Volver a la Lista
-          </button>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="alert alert-danger mt-4" role="alert">
-          {errorMessage}
+          <h2>Detalles de la Partida</h2>
+          <p><strong>Nombre:</strong> {selectedGame.name}</p>
+          <p><strong>Propietario:</strong> {selectedGame.owner}</p>
+          <p><strong>Contraseña:</strong> {selectedGame.password}</p>
+          <p><strong>Jugadores:</strong> {selectedGame.players?.join(', ') || 'Ninguno'}</p>
+          <button className="btn btn-primary" onClick={refreshGameDetails}>Refrescar</button>
+          <button className="btn btn-secondary mt-2" onClick={() => setView('home')}>Volver al Inicio</button>
+          {errorMessage && <div className="alert alert-danger mt-3">{errorMessage}</div>}
         </div>
       )}
     </div>
