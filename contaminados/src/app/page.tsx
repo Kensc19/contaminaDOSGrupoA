@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { FaCog } from 'react-icons/fa';
 import axios from 'axios';
+import { headers } from 'next/headers';
 
 // Definir el tipo Game para las partidas
 interface Game {
@@ -13,7 +14,7 @@ interface Game {
   players?: string[];
   status?: string;
   enemies?: string[];
-  currentRound?: number;
+  currentRound?: string;
 }
 
 interface ApiResponse {
@@ -35,7 +36,7 @@ export default function Home() {
   const [view, setView] = useState('home');
   const [gameDetails, setGameDetails] = useState<Game>({ name: '', owner: '', password: '' });
   const [games, setGames] = useState<Game[]>([]);
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);  
   const [errorMessage, setErrorMessage] = useState('');
   const [playerName, setPlayerName] = useState(''); // Nombre del jugador
   const [gamePassword, setGamePassword] = useState(''); // Contraseña de la partida
@@ -47,9 +48,13 @@ export default function Home() {
   const [limit, setLimit] = useState(10);
   const MAX_PLAYERS = 10 // Establecer el límite máximo de jugadores por sala
   const [rounds, setrounds] = useState([]);  
+  const [leaderActual, setLeader] = useState('');
+  const [resultActual, setResult] = useState('');
+  const [statusActual, setStatus] = useState('');
+  const [phaseActual, setPhase] = useState('');
+  const [groupActual, setGroup] = useState([]);
+  const [votesActual, setVotes] = useState([]);
   const [error, setError] = useState('');
-  const [round, setRound] = useState([]);
-  //const [gameId, setGameId] = useState<string>('');
 
   // Función para obtener las partidas desde la API
   const fetchGames = async () => {
@@ -174,71 +179,20 @@ export default function Home() {
 
   //Función para traer la información de la ronda
   const getAllRounds = async(gameId: string, playerName: string, password?: string) => {
-        try{          
-          setError('');
-
-          //Crear la petición de las rondas a la API
-          const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds`, {
-            method: 'GET',
-            headers: {
-              'accept': 'application/json',
-              'password': gamePassword,
-              'player': playerName
-            }
-          });
-
-          if (response.ok){             
-            const data = await response.json();
-            console.log(data);
-            setrounds(data.data)
-          }else if(response.status === 400){
-            alert('Bad Request'); 
-          }else if(response.status === 401){
-            alert('Credenciales Inválidas');
-          }else if(response.status === 403){
-            alert('No forma parte del juego');
-          }else if(response.status === 404){
-            alert('Not found');
-          }
-          else if(response.status === 408){
-            alert('Request Timeout');
-          }
-          else{
-            alert('Error desconocido');
-          }
-        }
-        catch(err){
-          alert('Ocurrió un error al traer la información de las rondas'+ err);
-        }
-
-  }
-
-  //Ejecutar getAllRounds
-  const handleGetAllRounds = () => {
-    if(selectedGame && selectedGame.id && selectedGame.password){
-      getAllRounds(selectedGame.id, playerName, selectedGame.password);
-    }else{
-      alert('Error al traer los datos')
-    }
-  }
-
-  //Función para traer información de una ronda
-  const getRound =  async(gameId: string, roundId: string, playerName:string, password?: string) =>{
-    try{
-      //crear la petición a la API
-      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,{
-        method:'GET',
+    try{          
+      setError('');
+      //Crear la petición de las rondas a la API
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds`, {
+        method: 'GET',
         headers: {
           'accept': 'application/json',
-          'password': gamePassword,
+          'password': gamePassword || '',
           'player': playerName
         }
       });
-      
       if (response.ok){             
         const data = await response.json();
-        console.log(data);
-        setRound(data.data)
+        setrounds(data.data)        
       }else if(response.status === 400){
         alert('Bad Request'); 
       }else if(response.status === 401){
@@ -254,12 +208,71 @@ export default function Home() {
       else{
         alert('Error desconocido');
       }
+    }
+    catch(err){
+      alert('Ocurrió un error al traer la información de las rondas'+ err);
+    }
+  }
 
+  //Ejecutar getAllRounds
+  /*useEffect(()=> {
+    if(view === 'gameStarted'){
+      
+    }
+  }, [selectedGame?.currentRound])
+  */
+  const handleGetAllRounds = () => {
+    if(selectedGame && selectedGame.id && selectedGame.password){      
+        getAllRounds(selectedGame.id, playerName, selectedGame.password);
+      }else{
+        alert('Error al traer los datos')
+      }
+  }
+
+  //Función para traer información de una ronda
+  const getRound =  async(gameId: string, roundId:string, playerName: string, password?: string) =>{
+    try{
+      //crear la petición a la API
+      const response = await fetch(`https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,{
+        method:'GET',
+        headers: {
+          'accept': 'application/json',
+          'password': gamePassword || '',
+          'player': playerName
+        }
+      });
+         
+      if (response.ok){
+        const data = await response.json();        
+        setLeader(data.data.leader);
+        setResult(data.data.result);
+        setStatus(data.data.status);
+        setPhase(data.data.phase);
+        setGroup(data.data.group);
+        setVotes(data.data.votes);
+      }
+      else{
+        alert('error en el getRound');
+        //handleStartGameErrors(response);
+      }
     }catch(err){
       alert('Ocurrió un error al traer la información de la ronda'+ err);
     }
-
   };
+
+  /*useEffect(()=>{
+    if(view === 'gameStarted'){
+      
+    }
+  }, [rounds])
+  */
+  const handleGetRound = () => {
+    if(selectedGame && selectedGame.id && selectedGame.currentRound && selectedGame.password){
+      getRound(selectedGame.id, selectedGame.currentRound, playerName, selectedGame.password);
+    }else{
+      alert('No se pudo traer la información');
+    }       
+  }
 
   //Función para buscar la partida
   const handleSearch = async (page = 0) => {
@@ -360,13 +373,12 @@ export default function Home() {
   };
 
   const handleStartGame = () => {
-    if (selectedGame && selectedGame.id && selectedGame.password) {
-      startGame(selectedGame.id, playerName, selectedGame.password);
+    if (selectedGame && selectedGame.id && selectedGame.password && selectedGame.currentRound) {
+      startGame(selectedGame.id, playerName, selectedGame.password);      
     } else {
       alert('Faltan datos para iniciar el juego.');
     }
   };
-
 
   // Manejar el formulario de unirse a la partida
   const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -378,13 +390,14 @@ export default function Home() {
 
   const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    createGame(gameDetails);
+    createGame(gameDetails);    
   };
 
   const handleSelectGame = (game: Game) => {
     setSelectedGame(game);
     setView('joinGame'); // Cambiar a la vista de unirse a la partida
   };
+
   //Función para traer los datos del juegoi
   const fetchGameDetails = async (gameId: string) => {
     try {
@@ -398,7 +411,7 @@ export default function Home() {
       });
       if (response.ok) {
         const result: ApiResponse = await response.json();
-        setSelectedGame(result.data);
+        setSelectedGame(result.data);        
       } else {
         const errorResult = await response.json();
         console.error('Error al obtener los detalles del juego', errorResult);
@@ -415,6 +428,7 @@ export default function Home() {
       alert('Error en la petición: ' + error);
     }
   };
+
   // Función para refrescar toda la información del juego
   const handleRefreshGame = async () => {
     if (selectedGame && selectedGame.id) {
@@ -502,6 +516,7 @@ export default function Home() {
           <button type="button" className="btn btn-secondary ms-2" onClick={() => setView('home')}>Cancelar</button>
         </form>
       )}
+
       {view === 'list' && (
         <form onSubmit={handleJoinGameSubmit} className="mt-4">
           <h2>Lista de Partidas Disponibles</h2>
@@ -566,6 +581,7 @@ export default function Home() {
           <button type="button" className="btn btn-secondary mt-3" onClick={() => setView('home')}>Volver</button>
         </form>
       )}
+
       {/* Modal */}
       <div className={`modal fade ${showSettings ? 'show' : ''}`} style={{ display: showSettings ? 'block' : 'none' }} tabIndex={-1}>
         <div className="modal-dialog">
@@ -592,6 +608,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+
       {view === 'joinGame' && selectedGame && (
         <form onSubmit={handleJoinGameSubmit} className="mt-4">
           <h2>Unirse a la Partida</h2>
@@ -620,6 +637,7 @@ export default function Home() {
           </button>
         </form>
       )}
+
       {view === 'gameDetails' && selectedGame && (
         <div className="mt-4">
           <h2>Detalles de la Partida: {selectedGame.name}</h2>
@@ -669,44 +687,67 @@ export default function Home() {
         <div className="mt-4">
           <h2>El juego ha comenzado</h2>
           <p>¡Buena suerte a todos los jugadores!</p>
+          {/*Información de la partida actual*/}
           <div>
-            <button type= "button" className="btn btn-primary mt-4" onClick={handleGetAllRounds}>
+            <h2>Ronda Actual</h2>
+            <ul>              
+                <li>                                
+                    <strong>ID:</strong> {selectedGame.currentRound} <br />
+                    <strong>Líder:</strong> {leaderActual}<br />
+                    <strong>Resultado : </strong> {resultActual}<br/>
+                    <strong>Estado:</strong> {statusActual} <br />
+                    <strong>Fase:</strong> {phaseActual} <br />
+                    <strong>Grupo:</strong> {groupActual && groupActual.length > 0 ? groupActual.join(', ') : 'Sin grupo'} <br />
+                    <strong>Votos:</strong> {votesActual && votesActual.length > 0 ? votesActual.join(', ') : 'Sin votos'} <br />                    
+                </li>              
+            </ul>          
+            <button type='button' className="btn btn-primary mt-4" onClick={() => { handleGetRound(); handleRefreshGame();}}>
+              Actualizar Información
+            </button>
+          </div>
+          <div>
+          <button type= "button" className="btn btn-primary mt-4" onClick={handleGetAllRounds}>
               Obtener Rondas
-            </button>    
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Líder</th>
-                  <th>Estado</th>
-                  <th>Fase</th>
-                  <th>Grupo</th>
-                  <th>Votos</th>
-                </tr>
-              </thead>
-              <tbody>
+            </button>
+            <div>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Líder</th>
+                    <th>Resultado</th>
+                    <th>Estado</th>
+                    <th>Fase</th>
+                    <th>Grupo</th>
+                    <th>Votos</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {rounds.map((round) => (
                   <tr key={round.id}>
                     <td>{round.id}</td>
                     <td>{round.leader}</td>
+                    <td>{round.result ? round.result : 'No hay'}</td>
                     <td>{round.status}</td>
                     <td>{round.phase}</td>
                     <td>{round.group && round.group.length > 0 ? round.group.join(', ') : 'Sin grupo'}</td>
                     <td>{round.votes && round.votes.length > 0 ? round.votes.join(', ') : 'Sin votos'}</td>
-                  </tr>                  
-                ))}
+                    </tr>
+                    ))}
               </tbody>
-            </table>            
+              </table>
+            </div>
           </div>
         </div>
       )}
       {
 }
+      {/*
       {errorMessage && (
         <div className="alert alert-danger mt-4" role="alert">
           {errorMessage}
         </div>
-      )}
+      )}*/}
     </div>
   );
 }
