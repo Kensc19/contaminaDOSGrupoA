@@ -690,16 +690,14 @@ export default function Home() {
           {/*Información de la partida actual*/}
           <div>
             <h2>Ronda Actual</h2>
-            <ul>              
-                <li>                                
-                    <strong>ID:</strong> {selectedGame.currentRound} <br />
-                    <strong>Líder:</strong> {leaderActual}<br />
-                    <strong>Resultado : </strong> {resultActual}<br/>
-                    <strong>Estado:</strong> {statusActual} <br />
-                    <strong>Fase:</strong> {phaseActual} <br />
-                    <strong>Grupo:</strong> {groupActual && groupActual.length > 0 ? groupActual.join(', ') : 'Sin grupo'} <br />
-                    <strong>Votos:</strong> {votesActual && votesActual.length > 0 ? votesActual.join(', ') : 'Sin votos'} <br />                    
-                </li>              
+            <ul className ="list-group">                                                              
+              <li className="list-group-item"> <strong>ID:</strong> {selectedGame.currentRound} </li>
+              <li className="list-group-item"> <strong>Líder:</strong> {leaderActual} </li>
+              <li className="list-group-item"> <strong>Resultado : </strong> {resultActual} </li>
+              <li className="list-group-item"> <strong>Estado:</strong> {statusActual} </li>
+              <li className="list-group-item"> <strong>Fase:</strong> {phaseActual} </li>
+              <li className="list-group-item"> <strong>Grupo:</strong> {groupActual && groupActual.length > 0 ? groupActual.join(', ') : 'Sin grupo'} </li>
+              <li className="list-group-item"> <strong>Votos:</strong> {votesActual && votesActual.length > 0 ? votesActual.join(', ') : 'Sin votos'} </li>                                  
             </ul>          
             <button type='button' className="btn btn-primary mt-4" onClick={() => { handleGetRound(); handleRefreshGame();}}>
               Actualizar Información
