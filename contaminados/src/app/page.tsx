@@ -1,11 +1,13 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FaCog } from "react-icons/fa";
-import axios from "axios";
-import { headers } from "next/headers";
+import CreateGameform from "./components/createGameform";
+import GameList from "./components/gameList";
+import JoinGame, { joinGame } from "./components/joinGame";
+import GameDetails from "./components/gameDetails";
+import GameStart from "./components/gameStart"; // Import the GameStart component
 
-// Definir el tipo Game para las partidas
 interface Game {
   name: string;
   owner: string;
@@ -17,21 +19,10 @@ interface Game {
   currentRound?: string;
 }
 
-interface Round {
-  id: string;
-  leader: string;
-  result?: string;
-  status: string;
-  phase: string;
-  group?: string[];
-  votes?: string[];
-}
-
-interface ApiResponse {
-  status: number;
-  msg: string;
-  data: Game;
-  others: any;
+interface JoinGameResult {
+  success: boolean;
+  data?: Game;
+  error?: string;
 }
 
 export default function Home() {
@@ -42,660 +33,65 @@ export default function Home() {
   }, []);
 
   const [view, setView] = useState("home");
-  const [gameDetails, setGameDetails] = useState<Game>({
-    name: "",
-    owner: "",
-    password: "",
-  });
-  const [games, setGames] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [gamePassword, setGamePassword] = useState("");
   const [playerName, setPlayerName] = useState(""); // Nombre del jugador
-  const [gamePassword, setGamePassword] = useState(""); // Contraseña de la partida
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isOwner, setIsOwner] = useState(false); // Indica si el jugador es el propietario
   const [backendAddress, setBackendAddress] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [limit, setLimit] = useState(10);
-  const MAX_PLAYERS = 10; // Establecer el límite máximo de jugadores por sala
-  const [rounds, setRounds] = useState<Round[]>([]);
-  const [leaderActual, setLeader] = useState("");
-  const [resultActual, setResult] = useState("");
-  const [statusActual, setStatus] = useState("");
-  const [phaseActual, setPhase] = useState("");
-  const [groupActual, setGroup] = useState([]);
-  const [votesActual, setVotes] = useState([]);
-  const [error, setError] = useState("");
-  const [vote, setVote] = useState<boolean | null>(null); // Estado para el voto del jugador
-  const [currentRound, setCurrentRound] = useState<Round | null>(null); // Estado para la ronda actual
+  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
+  const playerNameRef = useRef<HTMLInputElement>(null);
 
-  // Función para obtener las partidas desde la API
-  const fetchGames = async () => {
-    try {
-      const response = await fetch(
-        "https://contaminados.akamai.meseguercr.com/api/games"
-      );
-      if (response.ok) {
-        const result: ApiResponse = await response.json();
-        console.log("Datos obtenidos:", result.data);
-        if (Array.isArray(result.data)) {
-          setGames(result.data);
-          setFilteredGames(result.data.slice(0, limit));
-        } else {
-          console.error('La propiedad "data" no es un array', result.data);
-          setGames([]);
-          setFilteredGames([]);
-        }
-      } else {
-        console.error("Error al obtener las partidas");
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-    }
+  const handleGameCreated = (game: Game, password: string) => {
+    setSelectedGame(game);
+    setGamePassword(password);
+    setPlayerName(game.owner); // El propietario es el creador de la partida
+    setIsOwner(true); // El creador es el propietario
+    setView("gameDetails");
   };
 
-  //Función para crear una partida
-  const createGame = async (game: Game) => {
-    try {
-      const response = await fetch(
-        "https://contaminados.akamai.meseguercr.com/api/games",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(game),
-        }
-      );
-
-      if (response.ok) {
-        const result: ApiResponse = await response.json();
-        setSelectedGame(result.data);
-        setGamePassword(game.password || ""); // Almacenar la contraseña en el estado
-        setPlayerName(game.owner); // Establecer el nombre del jugador como el propietario
-        fetchGames();
-        setView("gameDetails");
-      } else {
-        console.error("Error al crear la partida");
-        setErrorMessage("Error al crear la partida.");
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      setErrorMessage("Error en la petición: " + error);
-    }
-  };
-
-  //Función para unirse a una partida
-  const joinGame = async (
-    gameId: string,
-    playerName: string,
-    password?: string
-  ) => {
-    try {
-      // Obtener los detalles del juego para verificar el estado actual
-      const gameDetailsResponse = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            password: password || "",
-            player: playerName,
-          },
-        }
-      );
-
-      if (gameDetailsResponse.status === 401) {
-        // El jugador no es parte del juego, puede intentar unirse
-        console.log("El jugador no es parte del juego, puede intentar unirse.");
-
-        const gameDetails: ApiResponse = await gameDetailsResponse.json();
-
-        // Validar límite de jugadores
-        if (
-          gameDetails.data.players &&
-          gameDetails.data.players.length >= MAX_PLAYERS
-        ) {
-          alert("La sala está llena. No se pueden unir más jugadores.");
-          return;
-        }
-
-        // Construir el cuerpo de la petición con el nombre del jugador
-        const bodyData = { player: playerName };
-
-        const response = await fetch(
-          `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              password: password || "", // Contraseña en el header si existe
-            },
-            body: JSON.stringify(bodyData),
-          }
-        );
-
-        if (response.ok) {
-          const result: ApiResponse = await response.json();
-          console.log("Unido a la partida:", result.data);
-
-          if (result.data && result.data.players) {
-            setSelectedGame(result.data);
-            setGamePassword(password || ""); // Almacenar la contraseña en el estado
-          } else {
-            console.warn(
-              "Los detalles de la partida no contienen jugadores o no se han recibido correctamente"
-            );
-          }
-          setView("gameDetails");
-        } else if (response.status === 400) {
-          const errorResult = await response.json();
-          console.error("Error al unirse a la partida", errorResult);
-          alert(
-            "No se pudo unir a la partida. " +
-              (errorResult.msg || "Verifica si la contraseña es correcta.")
-          );
-        } else {
-          console.error("Error desconocido al unirse a la partida");
-          alert("Error desconocido al unirse a la partida.");
-        }
-      } else if (gameDetailsResponse.ok) {
-        // El jugador ya es parte del juego, no se le permite unirse nuevamente
-        alert("El jugador ya es parte del juego. No se puede unir nuevamente.");
-      } else {
-        const errorResult = await gameDetailsResponse.json();
-        console.error("Error al obtener los detalles del juego", errorResult);
-        alert(
-          "Error al obtener los detalles del juego: " +
-            (errorResult.msg || `Status: ${gameDetailsResponse.status}`)
-        );
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      alert("Error en la petición: " + error);
-    }
-  };
-
-  //Función para traer la información de la ronda
-  const getAllRounds = async (
-    gameId: string,
-    playerName: string,
-    password?: string
-  ) => {
-    try {
-      setError(""); // Asumo que setError está definido correctamente en tu código
-      // Crear la petición de las rondas a la API
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword || "",
-            player: playerName,
-          },
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setRounds(data.data); // Aquí usamos correctamente setRounds
-      } else if (response.status === 400) {
-        alert("Bad Request");
-      } else if (response.status === 401) {
-        alert("Credenciales Inválidas");
-      } else if (response.status === 403) {
-        alert("No forma parte del juego");
-      } else if (response.status === 404) {
-        alert("Not found");
-      } else if (response.status === 408) {
-        alert("Request Timeout");
-      } else {
-        alert("Error desconocido");
-      }
-    } catch (err) {
-      alert("Ocurrió un error al traer la información de las rondas: " + err);
-    }
-  };
-
-  //Ejecutar getAllRounds
-  /*useEffect(()=> {
-    if(view === 'gameStarted'){
-      
-    }
-  }, [selectedGame?.currentRound])
-  */
-  const handleGetAllRounds = () => {
-    if (selectedGame && selectedGame.id && selectedGame.password) {
-      getAllRounds(selectedGame.id, playerName, selectedGame.password);
-    } else {
-      alert("Error al traer los datos");
-    }
-  };
-
-  //Función para traer información de una ronda
-  const getRound = async (
-    gameId: string,
-    roundId: string,
-    playerName: string,
-    password?: string
-  ) => {
-    try {
-      //crear la petición a la API
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword || "",
-            player: playerName,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setLeader(data.data.leader);
-        setResult(data.data.result);
-        setStatus(data.data.status);
-        setPhase(data.data.phase);
-        setGroup(data.data.group);
-        setVotes(data.data.votes);
-      } else {
-        alert("error en el getRound");
-        //handleStartGameErrors(response);
-      }
-    } catch (err) {
-      alert("Ocurrió un error al traer la información de la ronda" + err);
-    }
-  };
-
-  /*useEffect(()=>{
-    if(view === 'gameStarted'){
-      
-    }
-  }, [rounds])
-  */
-  const handleGetRound = () => {
-    if (
-      selectedGame &&
-      selectedGame.id &&
-      selectedGame.currentRound &&
-      selectedGame.password
-    ) {
-      getRound(
-        selectedGame.id,
-        selectedGame.currentRound,
-        playerName,
-        selectedGame.password
-      );
-    } else {
-      alert("No se pudo traer la información");
-    }
-  };
-
-  //Función para buscar la partida
-  const handleSearch = async (page = 0) => {
-    if (searchQuery.length >= 3) {
-      try {
-        const response = await axios.get(
-          `https://contaminados.akamai.meseguercr.com/api/games`,
-          {
-            params: {
-              name: searchQuery,
-              status: "lobby",
-              page: page,
-              limit: limit,
-            },
-          }
-        );
-        if (response.status === 200) {
-          setFilteredGames(response.data.data);
-          setCurrentPage(page);
-        } else {
-          console.error("Error fetching games:", response.statusText);
-        }
-      } catch (error) {
-        console.error("Error fetching games:", error);
-      }
-    } else {
-      setFilteredGames(games.slice(page * limit, (page + 1) * limit)); // Mostrar juegos paginados si la búsqueda es menor a 3 caracteres
-      setCurrentPage(page);
-    }
-  };
-
-  useEffect(() => {
-    const fetchAndSearchGames = async () => {
-      if (view === "list") {
-        if (searchQuery.length >= 3) {
-          try {
-            const response = await axios.get(
-              `https://contaminados.meseguercr.com/api/games`,
-              {
-                params: {
-                  name: searchQuery,
-                  status: "lobby",
-                  page: 0,
-                  limit: 50,
-                },
-              }
-            );
-            if (response.status === 200) {
-              setFilteredGames(response.data.data);
-            } else {
-              console.error("Error fetching games:", response.statusText);
-            }
-          } catch (error) {
-            console.error("Error fetching games:", error);
-          }
-        } else {
-          fetchGames();
-        }
-      }
-    };
-
-    fetchAndSearchGames();
-  }, [view, searchQuery]);
-
-  // Función para iniciar la partida
-  const startGame = async (
+  const handleJoinGame = async (
     gameId: string,
     playerName: string,
     password: string
   ) => {
-    if (!selectedGame || !selectedGame.players) {
-      alert("No hay información suficiente sobre los jugadores.");
-      return;
-    }
-
-    const playerCount = selectedGame.players.length;
-
-    if (playerCount < 5) {
-      alert("Se necesitan al menos 5 jugadores para iniciar el juego.");
-      return;
-    }
-
-    if (playerCount > 10) {
-      alert("No puede haber más de 10 jugadores en el juego.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/start`,
-        {
-          method: "HEAD", // El método es HEAD
-          headers: {
-            "Content-Type": "application/json",
-            password: password,
-            player: playerName,
-          },
-        }
-      );
-
-      if (response.ok) {
-        alert("Juego iniciado correctamente");
-        setView("gameStarted"); // Cambiar la vista a "gameStarted"
-      } else {
-        handleStartGameErrors(response);
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      alert("Error al iniciar el juego: " + error);
-    }
-  };
-
-  const handleStartGame = () => {
-    if (
-      selectedGame &&
-      selectedGame.id &&
-      selectedGame.password &&
-      selectedGame.currentRound
-    ) {
-      startGame(selectedGame.id, playerName, selectedGame.password);
+    const result: JoinGameResult = await joinGame(gameId, playerName, password);
+    if (result.success) {
+      setSelectedGame(result.data);
+      setGamePassword(password);
+      setPlayerName(playerName); // Establece el nombre del jugador
+      setIsOwner(false); // El jugador que se une no es el propietario
+      setView("gameDetails");
     } else {
-      alert("Faltan datos para iniciar el juego.");
+      setErrorMessage(result.error || "Error al unirse a la partida");
+      setShowErrorModal(true);
     }
   };
 
-  // Manejar el formulario de unirse a la partida
-  const handleJoinGameSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (selectedGame) {
-      joinGame(selectedGame.id!, playerName, gamePassword);
+  const handleCloseErrorModal = () => {
+    setShowErrorModal(false);
+    if (playerNameRef.current) {
+      playerNameRef.current.focus();
     }
-  };
-
-  const handleCreateGame = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    createGame(gameDetails);
   };
 
   const handleSelectGame = (game: Game) => {
     setSelectedGame(game);
-    setView("joinGame"); // Cambiar a la vista de unirse a la partida
-  };
-
-  //Función para traer los datos del juegoi
-  const fetchGameDetails = async (gameId: string) => {
-    try {
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword, // Utilizar la contraseña almacenada en el estado
-            player: playerName,
-          },
-        }
-      );
-      if (response.ok) {
-        const result: ApiResponse = await response.json();
-        setSelectedGame(result.data);
-      } else {
-        const errorResult = await response.json();
-        console.error("Error al obtener los detalles del juego", errorResult);
-
-        if (response.status === 400) {
-          console.error("Error 400: Bad Request. Detalles:", errorResult);
-          alert(
-            `Error 400: Bad Request. ${
-              errorResult.msg || "Verifica los parámetros de la solicitud."
-            }`
-          );
-        } else {
-          alert(
-            "Error al obtener los detalles del juego: " +
-              (errorResult.msg || `Status: ${response.status}`)
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      alert("Error en la petición: " + error);
-    }
-  };
-
-  // Función para refrescar toda la información del juego
-  const handleRefreshGameInfo = async () => {
-    if (selectedGame && selectedGame.id) {
-      if (playerName.trim() === "") {
-        alert("El nombre del jugador es obligatorio.");
-        return;
-      }
-      try {
-        await fetchGameDetails(selectedGame.id);
-      } catch (error) {
-        console.error("Error al refrescar el juego:", error);
-        alert("Error al refrescar el juego: " + error);
-      }
-    } else {
-      console.error(
-        "No hay un juego seleccionado o el ID del juego es inválido"
-      );
-      alert(
-        "No se puede refrescar: no hay un juego seleccionado o el ID es inválido"
-      );
-    }
-  };
-
-  const handleStartGameErrors = (response: Response) => {
-    if (response.status === 401) {
-      alert("No autorizado para iniciar el juego.");
-    } else if (response.status === 403) {
-      alert("Acceso prohibido.");
-    } else if (response.status === 404) {
-      alert("Juego no encontrado.");
-    } else if (response.status === 409) {
-      alert("El juego ya ha sido iniciado.");
-    } else if (response.status === 428) {
-      alert("Se necesitan al menos 5 jugadores para iniciar el juego.");
-    } else {
-      alert("Error desconocido al intentar iniciar el juego.");
-    }
-  };
-
-  //Nuevo
-  const getCurrentRound = async (gameId: string, roundId: string) => {
-    try {
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword || "",
-            player: playerName,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentRound(data.data);
-      } else {
-        alert("Error al obtener los detalles de la ronda");
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      alert("Error al obtener los detalles de la ronda: " + error);
-    }
-  };
-
-  // Función para votar en una ronda
-  const submitVote = async (
-    gameId: string,
-    roundId: string,
-    action: boolean
-  ) => {
-    try {
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            password: gamePassword || "",
-            player: playerName,
-          },
-          body: JSON.stringify({ action }),
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        alert("Voto registrado: " + (action ? "Colaborar" : "Sabotear"));
-        setVote(action);
-        getCurrentRound(gameId, roundId);
-      } else {
-        alert("Error al enviar el voto");
-      }
-    } catch (error) {
-      console.error("Error en la petición:", error);
-      alert("Error al enviar el voto: " + error);
-    }
-  };
-
-  const renderVotingScreen = () => {
-    if (!currentRound) {
-      return <p>Cargando ronda...</p>;
-    }
-
-    return (
-      <div>
-        <h2>Vota en la ronda {currentRound.id}</h2>
-        <p>Líder: {currentRound.leader}</p>
-        <p>Estado: {currentRound.status}</p>
-        <p>Fase: {currentRound.phase}</p>
-
-        {vote === null ? (
-          <div>
-            <button
-              className="btn btn-success"
-              onClick={() =>
-                submitVote(selectedGame!.id!, currentRound.id, true)
-              }
-            >
-              Colaborar
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() =>
-                submitVote(selectedGame!.id!, currentRound.id, false)
-              }
-            >
-              Sabotear
-            </button>
-          </div>
-        ) : (
-          <p>Ya has votado: {vote ? "Colaborar" : "Sabotear"}</p>
-        )}
-      </div>
-    );
-  };
-
-  // Función para refrescar toda la información del juego
-  const handleRefreshGame = async () => {
-    if (selectedGame && selectedGame.id) {
-      try {
-        const response = await fetch(
-          `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-              password: gamePassword,
-              player: playerName,
-            },
-          }
-        );
-        if (response.ok) {
-          const result: ApiResponse = await response.json();
-          setSelectedGame(result.data);
-        } else {
-          alert("Error al refrescar el juego");
-        }
-      } catch (error) {
-        console.error("Error al refrescar el juego:", error);
-        alert("Error al refrescar el juego: " + error);
-      }
-    }
+    setView("joinGame");
   };
 
   return (
     <div className="container mt-5">
-      <button
-        type="button"
-        className="btn btn-secondary float-end"
-        onClick={() => setShowSettings(true)}
-      >
-        <FaCog /> Configuración
-      </button>
-
       {view === "home" && (
         <>
+          <button
+            type="button"
+            className="btn btn-secondary float-end"
+            onClick={() => setShowSettings(true)}
+          >
+            <FaCog /> Configuración
+          </button>
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
             <button
@@ -710,140 +106,19 @@ export default function Home() {
           </div>
         </>
       )}
-
       {view === "create" && (
-        <form onSubmit={handleCreateGame} className="mt-4">
-          <h2>Crear Partida</h2>
-          <div className="mb-3">
-            <label className="form-label">Nombre de la Partida</label>
-            <input
-              type="text"
-              className="form-control"
-              value={gameDetails.name}
-              onChange={(e) =>
-                setGameDetails({ ...gameDetails, name: e.target.value })
-              }
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Propietario</label>
-            <input
-              type="text"
-              className="form-control"
-              value={gameDetails.owner}
-              onChange={(e) =>
-                setGameDetails({ ...gameDetails, owner: e.target.value })
-              }
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Contraseña</label>
-            <input
-              type="password"
-              className="form-control"
-              value={gameDetails.password}
-              onChange={(e) =>
-                setGameDetails({ ...gameDetails, password: e.target.value })
-              }
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Crear
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary ms-2"
-            onClick={() => setView("home")}
-          >
-            Cancelar
-          </button>
-        </form>
+        <CreateGameform
+          onGameCreated={handleGameCreated}
+          onCancel={() => setView("home")}
+          setErrorMessage={setErrorMessage}
+        />
       )}
-
       {view === "list" && (
-        <form onSubmit={handleJoinGameSubmit} className="mt-4">
-          <h2>Lista de Partidas Disponibles</h2>
-          <input
-            type="text"
-            className="form-control mb-3"
-            placeholder="Buscar partidas..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault(); // Prevenir el comportamiento por defecto del Enter
-                handleSearch(0); // Iniciar la búsqueda desde la primera página
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-primary mb-3"
-            onClick={() => handleSearch(0)}
-          >
-            Buscar
-          </button>
-          <table className="table table-bordered">
-            <thead>
-              <tr>
-                <th>Nombre de la Partida</th>
-                <th>Propietario</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(filteredGames) && filteredGames.length > 0 ? (
-                filteredGames.map((game) => (
-                  <tr key={game.id}>
-                    <td>{game.name}</td>
-                    <td>{game.owner}</td>
-                    <td className="text-end">
-                      <button
-                        className="btn btn-success"
-                        onClick={() => handleSelectGame(game)}
-                      >
-                        Unirse
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3}>No hay partidas disponibles</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="gap-3 d-md-flex justify-content-md-end mb-3">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => handleSearch(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => handleSearch(currentPage + 1)}
-              disabled={filteredGames.length < limit}
-            >
-              Siguiente
-            </button>
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary mt-3"
-            onClick={() => setView("home")}
-          >
-            Volver
-          </button>
-        </form>
+        <GameList
+          onSelectGame={handleSelectGame}
+          onBack={() => setView("home")}
+        />
       )}
-
       {/* Modal */}
       <div
         className={`modal fade ${showSettings ? "show" : ""}`}
@@ -886,237 +161,71 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      {view === "joinGame" && selectedGame && (
-        <form onSubmit={handleJoinGameSubmit} className="mt-4">
-          <h2>Unirse a la Partida</h2>
-          <div className="mb-3">
-            <label className="form-label">Nombre de Jugador</label>
-            <input
-              type="text"
-              className="form-control"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Contraseña (si es necesaria)</label>
-            <input
-              type="password"
-              className="form-control"
-              value={gamePassword}
-              onChange={(e) => setGamePassword(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Unirse
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary ms-2"
-            onClick={() => setView("list")}
-          >
-            Cancelar
-          </button>
-        </form>
+      {view === "joinGame" && (
+        <JoinGame
+          selectedGame={selectedGame}
+          onJoinGame={handleJoinGame}
+          onCancel={() => setView("list")}
+          playerNameRef={playerNameRef}
+        />
       )}
 
       {view === "gameDetails" && selectedGame && (
-        <div className="mt-4">
-          <h2>Detalles de la Partida: {selectedGame.name}</h2>
-          <p>Propietario: {selectedGame.owner}</p>
-          <p>Estado: {selectedGame.status}</p>
-          <p>Contraseña: {selectedGame.password ? "Sí" : "No"}</p>
-          <p>Ronda Actual: {selectedGame.currentRound}</p>
-          <h3>Jugadores:</h3>
-          {selectedGame.players && selectedGame.players.length > 0 ? (
-            <ul>
-              {selectedGame.players.map((player, index) => (
-                <li key={index}>{player}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay jugadores en la partida.</p>
-          )}
-          <h3>Enemigos:</h3>
-          {selectedGame.enemies && selectedGame.enemies.length > 0 ? (
-            <ul>
-              {selectedGame.enemies.map((enemy, index) => (
-                <li key={index}>{enemy}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay enemigos en la partida.</p>
-          )}
-          <button
-            type="button"
-            className="btn btn-secondary mt-4"
-            onClick={() => setView("list")}
-          >
-            Volver a la Lista
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-primary mt-4 ms-2"
-            onClick={handleRefreshGame}
-          >
-            Refrescar Información del Juego
-          </button>
-
-          {/* Mostrar el botón solo si el jugador es el propietario */}
-          {selectedGame.owner === playerName && (
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              onClick={handleStartGame}
-            >
-              Iniciar Juego
-            </button>
-          )}
-        </div>
+        <>
+          <GameDetails
+            selectedGame={selectedGame}
+            playerName={playerName}
+            gamePassword={gamePassword}
+            isOwner={isOwner}
+            setView={setView}
+            setSelectedGame={setSelectedGame}
+          />
+        </>
       )}
 
       {view === "gameStarted" && selectedGame && (
-        <div className="mt-4">
-          <h2>El juego ha comenzado</h2>
-          <p>¡Buena suerte a todos los jugadores!</p>
+        <GameStart
+          selectedGame={selectedGame}
+          playerName={playerName}
+          gamePassword={gamePassword}
+          setView={setView}
+          currentRound={selectedGame.currentRound}
+        />
+      )}
 
-          {/*Información de la partida actual visible para todos los jugadores */}
-          <div>
-            <h2>Ronda Actual</h2>
-            <ul className="list-group">
-              <li className="list-group-item">
-                <strong>ID:</strong> {selectedGame.currentRound}
-              </li>
-              <li className="list-group-item">
-                <strong>Líder:</strong> {leaderActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Resultado :</strong> {resultActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Estado:</strong> {statusActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Fase:</strong> {phaseActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Grupo:</strong>{" "}
-                {groupActual && groupActual.length > 0
-                  ? groupActual.join(", ")
-                  : "Sin grupo"}
-              </li>
-              <li className="list-group-item">
-                <strong>Votos:</strong>{" "}
-                {votesActual && votesActual.length > 0
-                  ? votesActual.join(", ")
-                  : "Sin votos"}
-              </li>
-            </ul>
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              onClick={() => {
-                handleGetRound();
-                handleRefreshGame();
-              }}
-            >
-              Actualizar Información
-            </button>
-          </div>
-
-          {/* Sección de votación accesible para todos */}
-          <div className="mt-4">
-            <h3>Votación</h3>
-            {vote === null ? (
-              <div>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() =>
-                    submitVote(
-                      selectedGame!.id!,
-                      selectedGame.currentRound!,
-                      true
-                    )
-                  }
-                >
-                  Colaborar
-                </button>
-                <button
-                  className="btn btn-danger"
-                  onClick={() =>
-                    submitVote(
-                      selectedGame!.id!,
-                      selectedGame.currentRound!,
-                      false
-                    )
-                  }
-                >
-                  Sabotear
-                </button>
-              </div>
-            ) : (
-              <p>Ya has votado: {vote ? "Colaborar" : "Sabotear"}</p>
-            )}
-          </div>
-
-          {/* Botón para obtener todas las rondas */}
-          <div>
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              onClick={handleGetAllRounds}
-            >
-              Obtener Rondas
-            </button>
-            <div>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Líder</th>
-                    <th>Resultado</th>
-                    <th>Estado</th>
-                    <th>Fase</th>
-                    <th>Grupo</th>
-                    <th>Votos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rounds.map((round) => (
-                    <tr key={round.id}>
-                      <td>{round.id}</td>
-                      <td>{round.leader}</td>
-                      <td>{round.result ? round.result : "No hay"}</td>
-                      <td>{round.status}</td>
-                      <td>{round.phase}</td>
-                      <td>
-                        {round.group && round.group.length > 0
-                          ? round.group.join(", ")
-                          : "Sin grupo"}
-                      </td>
-                      <td>
-                        {round.votes && round.votes.length > 0
-                          ? round.votes.join(", ")
-                          : "Sin votos"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div
+        className={`modal fade ${showErrorModal ? "show" : ""}`}
+        style={{ display: showErrorModal ? "block" : "none" }}
+        tabIndex={-1}
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title" id="errorModalLabel">
+                Error
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                onClick={handleCloseErrorModal}
+              ></button>
+            </div>
+            <div className="modal-body">{errorMessage}</div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+                onClick={handleCloseErrorModal}
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
-      )}
-      {}
-      {/*
-      {errorMessage && (
-        <div className="alert alert-danger mt-4" role="alert">
-          {errorMessage}
-        </div>
-      )}*/}
+      </div>
     </div>
   );
 }
