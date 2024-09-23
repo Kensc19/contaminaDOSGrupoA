@@ -26,16 +26,16 @@ interface GameStartProps {
   playerName: string;
   gamePassword: string;
   setView: (view: string) => void;
-  currentRound: string | undefined; // Añadir currentRound a las props
+  //currentRound: string; // Añadir currentRound a las props
 }
 
 const GameStart: React.FC<GameStartProps> = ({
   selectedGame,
   playerName,
   gamePassword,
-  setView,
-  currentRound, // Usar currentRound en el componente
-}) => {
+  setView,  
+}) => {  
+  const [idRondaActual, setIdRondaActual] = useState<string>("");
   const [leaderActual, setLeaderActual] = useState<string>("");
   const [resultActual, setResultActual] = useState<string>("");
   const [statusActual, setStatusActual] = useState<string>("");
@@ -47,11 +47,13 @@ const GameStart: React.FC<GameStartProps> = ({
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    getAllRounds(selectedGame.id, playerName, gamePassword);
-    if (currentRound) {
-      getRound(selectedGame.id, currentRound, playerName, gamePassword);
-    }
-  }, [selectedGame.id, currentRound, playerName, gamePassword]);
+    if(selectedGame.status ==='rounds'){
+      getAllRounds(selectedGame.id, playerName, gamePassword);
+      if (selectedGame.currentRound) {
+        getRound(selectedGame.id, selectedGame.currentRound, playerName, gamePassword);
+      }
+    }    
+  }, [selectedGame.id, selectedGame.currentRound, playerName, gamePassword]);
 
   const handleApiErrors = (response: Response) => {
     if (response.status === 400) {
@@ -89,7 +91,7 @@ const GameStart: React.FC<GameStartProps> = ({
       );
       if (response.ok) {
         const data = await response.json();
-        setRounds(data.data);
+        setRounds(data.data); 
       } else {
         handleApiErrors(response);
       }
@@ -111,13 +113,13 @@ const GameStart: React.FC<GameStartProps> = ({
         }
       );
       if (response.ok) {
-        const data = await response.json();
-        setLeaderActual(data.leader);
-        setResultActual(data.result);
-        setStatusActual(data.status);
-        setPhaseActual(data.phase);
-        setGroupActual(data.group);
-        setVotesActual(data.votes);
+        const data = await response.json();      
+        setLeaderActual(data.data.leader);
+        setResultActual(data.data.result);
+        setStatusActual(data.data.status);
+        setPhaseActual(data.data.phase);
+        setGroupActual(data.data.group);
+        setVotesActual(data.data.votes);
       } else {
         handleApiErrors(response);
       }
@@ -131,7 +133,7 @@ const GameStart: React.FC<GameStartProps> = ({
     setVote(vote);
   };
 
-  const isLeader = currentRound && leaderActual === playerName;
+  const isLeader = selectedGame.currentRound && leaderActual === playerName;
   const isEnemy = selectedGame.enemies && selectedGame.enemies.includes(playerName);
 
   return (
@@ -144,7 +146,7 @@ const GameStart: React.FC<GameStartProps> = ({
         <h2>Ronda Actual</h2>
         <ul className="list-group">
           <li className="list-group-item">
-            <strong>ID:</strong> {currentRound}
+            <strong>ID:</strong> {selectedGame.currentRound}
           </li>
           <li className="list-group-item">
             <strong>Líder:</strong> {leaderActual}
@@ -175,9 +177,9 @@ const GameStart: React.FC<GameStartProps> = ({
           type="button"
           className="btn btn-primary mt-4"
           onClick={() => {
-            getAllRounds(selectedGame.id, playerName, gamePassword);
-            if (currentRound) {
-              getRound(selectedGame.id, currentRound, playerName, gamePassword);
+            getAllRounds(selectedGame.id, playerName, gamePassword);            
+            if (selectedGame && selectedGame.id && selectedGame.currentRound && selectedGame.password) {                              
+              getRound(selectedGame.id, selectedGame.currentRound, playerName, gamePassword);              
             }
           }}
         >
@@ -259,7 +261,7 @@ const GameStart: React.FC<GameStartProps> = ({
               onClick={() =>
                 submitVote(
                   selectedGame.id,
-                  currentRound!,
+                  selectedGame.currentRound!,
                   true
                 )
               }
@@ -272,7 +274,7 @@ const GameStart: React.FC<GameStartProps> = ({
                 onClick={() =>
                   submitVote(
                     selectedGame.id,
-                    currentRound!,
+                    selectedGame.currentRound!,
                     false
                   )
                 }

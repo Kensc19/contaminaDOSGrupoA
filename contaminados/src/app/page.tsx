@@ -33,7 +33,7 @@ export default function Home() {
   }, []);
 
   const [view, setView] = useState("home");
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedGame, setSelectedGame] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [gamePassword, setGamePassword] = useState("");
   const [playerName, setPlayerName] = useState(""); // Nombre del jugador
@@ -58,7 +58,7 @@ export default function Home() {
   ) => {
     const result: JoinGameResult = await joinGame(gameId, playerName, password);
     if (result.success) {
-      setSelectedGame(result.data);
+      setSelectedGame(result.data || null);
       setGamePassword(password);
       setPlayerName(playerName); // Establece el nombre del jugador
       setIsOwner(false); // El jugador que se une no es el propietario
@@ -183,14 +183,13 @@ export default function Home() {
         </>
       )}
 
-      {view === "gameStarted" && selectedGame && (
+      {view === "gameStarted" && selectedGame &&(
         <GameStart
           selectedGame={selectedGame}
           playerName={playerName}
           gamePassword={gamePassword}
           setView={setView}
-          currentRound={selectedGame.currentRound}
-        />
+          />
       )}
 
       <div

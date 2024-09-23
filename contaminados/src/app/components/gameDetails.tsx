@@ -17,7 +17,7 @@ interface GameDetailsProps {
   gamePassword: string;
   isOwner: boolean;
   setView: (view: string) => void;
-  setSelectedGame: (game: Game) => void;
+  setSelectedGame: (game:[]) => void;
 }
 
 const GameDetails: React.FC<GameDetailsProps> = ({
@@ -107,6 +107,8 @@ const GameDetails: React.FC<GameDetailsProps> = ({
 
       if (response.ok) {
         alert("Juego iniciado correctamente");
+        handleRefreshGame();
+        
         setView("gameStarted");
       } else {
         handleStartGameErrors(response);
