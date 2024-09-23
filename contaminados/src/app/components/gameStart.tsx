@@ -25,6 +25,7 @@ interface GameStartProps {
   selectedGame: Game;
   playerName: string;
   gamePassword: string;
+  view: string;
   setView: (view: string) => void;
   //currentRound: string; // Añadir currentRound a las props
 }
@@ -33,8 +34,9 @@ const GameStart: React.FC<GameStartProps> = ({
   selectedGame,
   playerName,
   gamePassword,
-  setView,  
-}) => {  
+  view,
+  setView,
+}) => {
   const [idRondaActual, setIdRondaActual] = useState<string>("");
   const [leaderActual, setLeaderActual] = useState<string>("");
   const [resultActual, setResultActual] = useState<string>("");
@@ -46,14 +48,26 @@ const GameStart: React.FC<GameStartProps> = ({
   const [rounds, setRounds] = useState<Round[]>([]);
   const [error, setError] = useState<string>("");
 
+  
   useEffect(() => {
-    if(selectedGame.status ==='rounds'){
+    if (selectedGame.status === "rounds") {
       getAllRounds(selectedGame.id, playerName, gamePassword);
       if (selectedGame.currentRound) {
-        getRound(selectedGame.id, selectedGame.currentRound, playerName, gamePassword);
+        getRound(
+          selectedGame.id,
+          selectedGame.currentRound,
+          playerName,
+          gamePassword
+        );
       }
-    }    
-  }, [selectedGame.id, selectedGame.currentRound, playerName, gamePassword]);
+    }
+  }, [
+    selectedGame.id,
+    selectedGame.currentRound,
+    selectedGame.status,
+    playerName,
+    gamePassword,
+  ]); 
 
   const handleApiErrors = (response: Response) => {
     if (response.status === 400) {
@@ -91,7 +105,7 @@ const GameStart: React.FC<GameStartProps> = ({
       );
       if (response.ok) {
         const data = await response.json();
-        setRounds(data.data); 
+        setRounds(data.data);
       } else {
         handleApiErrors(response);
       }
@@ -100,9 +114,15 @@ const GameStart: React.FC<GameStartProps> = ({
     }
   };
 
-  const getRound = async (gameId: string, roundId: string, playerName: string, password: string) => {
+  const getRound = async (
+    gameId: string,
+    roundId: string,
+    playerName: string,
+    password: string
+  ) => {
     try {
-      const response = await fetch( `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
+      const response = await fetch(
+        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
         {
           method: "GET",
           headers: {
@@ -113,7 +133,7 @@ const GameStart: React.FC<GameStartProps> = ({
         }
       );
       if (response.ok) {
-        const data = await response.json();      
+        const data = await response.json();
         setLeaderActual(data.data.leader);
         setResultActual(data.data.result);
         setStatusActual(data.data.status);
@@ -135,13 +155,13 @@ const GameStart: React.FC<GameStartProps> = ({
 
   const isLeader = selectedGame.currentRound && leaderActual === playerName;
   const isEnemy = selectedGame.enemies && selectedGame.enemies.includes(playerName);
-
   return (
     <div className="mt-4">
       <h2>El juego ha comenzado</h2>
       <p>¡Buena suerte a todos los jugadores!</p>
 
       {/* Información de la partida actual visible para todos los jugadores */}
+      {view === "gameStarted" && selectedGame && (
       <div>
         <h2>Ronda Actual</h2>
         <ul className="list-group">
@@ -177,9 +197,19 @@ const GameStart: React.FC<GameStartProps> = ({
           type="button"
           className="btn btn-primary mt-4"
           onClick={() => {
-            getAllRounds(selectedGame.id, playerName, gamePassword);            
-            if (selectedGame && selectedGame.id && selectedGame.currentRound && selectedGame.password) {                              
-              getRound(selectedGame.id, selectedGame.currentRound, playerName, gamePassword);              
+            getAllRounds(selectedGame.id, playerName, gamePassword);
+            if (
+              selectedGame &&
+              selectedGame.id &&
+              selectedGame.currentRound &&
+              selectedGame.password
+            ) {
+              getRound(
+                selectedGame.id,
+                selectedGame.currentRound,
+                playerName,
+                gamePassword
+              );
             }
           }}
         >
@@ -196,6 +226,7 @@ const GameStart: React.FC<GameStartProps> = ({
           </button>
         )}
       </div>
+      )}
 
       {/* Modal para proponer líderes */}
       <div
@@ -259,29 +290,31 @@ const GameStart: React.FC<GameStartProps> = ({
             <button
               className="btn btn-success me-2"
               onClick={() =>
-                submitVote(
-                  selectedGame.id,
-                  selectedGame.currentRound!,
-                  true
-                )
+                submitVote(selectedGame.id, selectedGame.currentRound!, true)
               }
             >
               Colaborar
             </button>
-            {isEnemy && (
-              <button
-                className="btn btn-danger"
-                onClick={() =>
-                  submitVote(
-                    selectedGame.id,
-                    selectedGame.currentRound!,
-                    false
+            {/*Mostrar solo botón de sabotear solo a lo enemigos*/}
+            {selectedGame.enemies &&
+              selectedGame.enemies.map(
+                (enemy) =>
+                  enemy === playerName && (
+                    <button
+                      className="btn btn-danger"
+                      onClick={() =>
+                        submitVote(
+                          selectedGame!.id!,
+                          selectedGame.currentRound!,
+                          false
+                        )
+                      }
+                      key={enemy}
+                    >
+                      Sabotear
+                    </button>
                   )
-                }
-              >
-                Sabotear
-              </button>
-            )}
+              )}
           </div>
         ) : (
           <p>Ya has votado: {vote ? "Colaborar" : "Sabotear"}</p>

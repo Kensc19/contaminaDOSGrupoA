@@ -177,6 +177,7 @@ export default function Home() {
             playerName={playerName}
             gamePassword={gamePassword}
             isOwner={isOwner}
+            view={view}
             setView={setView}
             setSelectedGame={setSelectedGame}
           />
@@ -188,6 +189,7 @@ export default function Home() {
           selectedGame={selectedGame}
           playerName={playerName}
           gamePassword={gamePassword}
+          view={view}
           setView={setView}
           />
       )}

@@ -24,7 +24,7 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games?page=1&limit=200');
+      const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games?page=1&limit=250');
       const data = await response.json();
       if (data && Array.isArray(data.data)) {
         setGames(data.data);

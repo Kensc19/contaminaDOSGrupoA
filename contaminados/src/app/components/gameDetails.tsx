@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState, useEffect} from "react";
 
 interface Game {
   name: string;
@@ -16,6 +16,7 @@ interface GameDetailsProps {
   playerName: string;
   gamePassword: string;
   isOwner: boolean;
+  view: string;
   setView: (view: string) => void;
   setSelectedGame: (game:[]) => void;
 }
@@ -25,14 +26,28 @@ const GameDetails: React.FC<GameDetailsProps> = ({
   playerName,
   gamePassword,
   isOwner,
+  view,
   setView,
   setSelectedGame,
 }) => {
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (selectedGame) {
+        handleRefreshGame();
+      }
+    }, 5000); // Poll every 5 seconds
+  
+    return () => clearInterval(intervalId); // Clean up on component unmount
+  }, [selectedGame, view]);
+
+
   const handleRefreshGame = async () => {
-    if (!playerName || !gamePassword) {
-      alert("El nombre del jugador y la contraseña son requeridos para refrescar la información del juego.");
+    if (!playerName) {
+      alert("El nombre del jugador es requerido para refrescar la información del juego.");
       return;
     }
+    console.log("Vista del juego:" +view);
 
     try {
       const response = await fetch(
@@ -49,6 +64,10 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       if (response.ok) {
         const result: { data: Game } = await response.json();
         setSelectedGame(result.data);
+
+        if (result.data.status === "rounds") {
+          setView("gameStarted");
+      }
       } else {
         alert("Error al refrescar el juego");
       }
