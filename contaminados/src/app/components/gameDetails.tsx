@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from "react";
+import React, { useState, useEffect } from "react";
 
 interface Game {
   name: string;
@@ -18,7 +18,7 @@ interface GameDetailsProps {
   isOwner: boolean;
   view: string;
   setView: (view: string) => void;
-  setSelectedGame: (game:[]) => void;
+  setSelectedGame: (game: []) => void;
 }
 
 const GameDetails: React.FC<GameDetailsProps> = ({
@@ -30,24 +30,23 @@ const GameDetails: React.FC<GameDetailsProps> = ({
   setView,
   setSelectedGame,
 }) => {
-
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (selectedGame) {
         handleRefreshGame();
       }
     }, 5000); // Poll every 5 seconds
-  
+
     return () => clearInterval(intervalId); // Clean up on component unmount
   }, [selectedGame, view]);
 
-
   const handleRefreshGame = async () => {
     if (!playerName) {
-      alert("El nombre del jugador es requerido para refrescar la información del juego.");
+      alert(
+        "El nombre del jugador es requerido para refrescar la información del juego."
+      );
       return;
     }
-    console.log("Vista del juego:" +view);
 
     try {
       const response = await fetch(
@@ -67,13 +66,13 @@ const GameDetails: React.FC<GameDetailsProps> = ({
 
         if (result.data.status === "rounds") {
           setView("gameStarted");
-      }
+        }
       } else {
         alert("Error al refrescar el juego");
       }
     } catch (error) {
-      console.error("Error al refrescar el juego:", error);
       alert("Error al refrescar el juego: " + error);
+      throw new Error("Error al refrescar el juego:" + error);
     }
   };
 
@@ -127,14 +126,14 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       if (response.ok) {
         alert("Juego iniciado correctamente");
         handleRefreshGame();
-        
+
         setView("gameStarted");
       } else {
         handleStartGameErrors(response);
       }
     } catch (error) {
-      console.error("Error en la petición:", error);
       alert("Error al iniciar el juego: " + error);
+      throw new Error("Error en la petición:" + error);
     }
   };
 

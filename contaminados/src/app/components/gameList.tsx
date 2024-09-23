@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface Game {
   id?: string;
@@ -14,7 +14,7 @@ interface gameListProps {
 const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
   const [games, setGames] = useState<Game[]>([]);
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const limit = 15;
 
@@ -24,20 +24,22 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch('https://contaminados.akamai.meseguercr.com/api/games?page=1&limit=250');
+      const response = await fetch(
+        "https://contaminados.akamai.meseguercr.com/api/games?page=1&limit=250"
+      );
       const data = await response.json();
       if (data && Array.isArray(data.data)) {
         setGames(data.data);
         setFilteredGames(data.data.slice(0, limit));
       }
     } catch (error) {
-      console.error('Error fetching games:', error);
+      throw new Error("Error fetching games:" + error);
     }
   };
 
   const handleSearch = (page = 0) => {
     if (searchQuery.length >= 3) {
-      const filtered = games.filter(game =>
+      const filtered = games.filter((game) =>
         game.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredGames(filtered.slice(page * limit, (page + 1) * limit));
@@ -62,7 +64,7 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
             handleSearch(0);
           }
@@ -124,11 +126,7 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
           Siguiente
         </button>
       </div>
-      <button
-        type="button"
-        className="btn btn-secondary mt-3"
-        onClick={onBack}
-      >
+      <button type="button" className="btn btn-secondary mt-3" onClick={onBack}>
         Volver
       </button>
     </div>

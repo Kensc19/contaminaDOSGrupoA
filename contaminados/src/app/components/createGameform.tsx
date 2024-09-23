@@ -57,12 +57,12 @@ const createGameForm: React.FC<createGameFormProps> = ({
         const result: ApiResponse = await response.json();
         onGameCreated(result.data, game.password || "");
       } else {
-        console.error("Error al crear la partida");
         setErrorMessage("Error al crear la partida.");
+        throw new Error("Error al crear la partida");
       }
     } catch (error) {
-      console.error("Error en la petición:", error);
       setErrorMessage("Error en la petición: " + error);
+      throw new Error("Error en la petición:" + error);
     }
   };
 

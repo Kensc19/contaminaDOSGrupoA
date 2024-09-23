@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 
 interface Game {
   id?: string;
@@ -18,7 +18,11 @@ interface JoinGameProps {
   playerNameRef: React.RefObject<HTMLInputElement>;
 }
 
-export const joinGame = async (gameId: string, playerName: string, password: string) => {
+export const joinGame = async (
+  gameId: string,
+  playerName: string,
+  password: string
+) => {
   try {
     const bodyData = { player: playerName };
     const joinResponse = await fetch(
@@ -39,20 +43,31 @@ export const joinGame = async (gameId: string, playerName: string, password: str
       const result = await joinResponse.json();
       return { success: true, data: result.data };
     } else if (joinResponse.status === 409) {
-      return { success: false, error: "Ya hay un jugador con ese nombre en la partida" };
+      return {
+        success: false,
+        error: "Ya hay un jugador con ese nombre en la partida",
+      };
     } else {
       const errorResult = await joinResponse.json();
-      return { success: false, error: errorResult.msg || "Error al unirse a la partida" };
+      return {
+        success: false,
+        error: errorResult.msg || "Error al unirse a la partida",
+      };
     }
   } catch (error) {
-    console.error("Error en la petición:", error);
     return { success: false, error: "Error en la petición: " + error };
+    throw new Error("Error en la petición:" + error);
   }
 };
 
-const JoinGame: React.FC<JoinGameProps> = ({ selectedGame, onJoinGame, onCancel, playerNameRef }) => {
-  const [playerName, setPlayerName] = useState('');
-  const [gamePassword, setGamePassword] = useState('');
+const JoinGame: React.FC<JoinGameProps> = ({
+  selectedGame,
+  onJoinGame,
+  onCancel,
+  playerNameRef,
+}) => {
+  const [playerName, setPlayerName] = useState("");
+  const [gamePassword, setGamePassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -88,8 +103,14 @@ const JoinGame: React.FC<JoinGameProps> = ({ selectedGame, onJoinGame, onCancel,
           onChange={(e) => setGamePassword(e.target.value)}
         />
       </div>
-      <button type="submit" className="btn btn-primary">Unirse</button>
-      <button type="button" className="btn btn-secondary ms-2" onClick={onCancel}>
+      <button type="submit" className="btn btn-primary">
+        Unirse
+      </button>
+      <button
+        type="button"
+        className="btn btn-secondary ms-2"
+        onClick={onCancel}
+      >
         Cancelar
       </button>
     </form>
