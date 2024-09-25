@@ -48,16 +48,22 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       return;
     }
 
+    // Configura los headers de manera condicional
+    const headers: HeadersInit = {
+      accept: "application/json",
+      player: playerName,
+    };
+
+    if (gamePassword && gamePassword.trim()) {
+      headers.password = gamePassword.trim();
+    }
+
     try {
       const response = await fetch(
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}`,
         {
           method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword,
-            player: playerName,
-          },
+          headers: headers,
         }
       );
       if (response.ok) {
@@ -110,16 +116,22 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       return;
     }
 
+    // Configura los headers de manera condicional
+    const headers: HeadersInit = {
+      accept: "application/json",
+      player: playerName,
+    };
+
+    if (gamePassword && gamePassword.trim()) {
+      headers.password = gamePassword.trim();
+    }
+
     try {
       const response = await fetch(
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/start`,
         {
           method: "HEAD", // El método es HEAD
-          headers: {
-            "Content-Type": "application/json",
-            password: gamePassword,
-            player: playerName,
-          },
+          headers: headers,
         }
       );
 

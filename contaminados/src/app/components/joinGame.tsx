@@ -24,6 +24,15 @@ export const joinGame = async (
   password: string
 ) => {
   try {
+
+    let gameData: any = {};
+
+    if (password?.trim()) {
+      gameData.password = password.trim();
+    }
+
+    gameData.player = playerName;
+    
     const bodyData = { player: playerName };
     const joinResponse = await fetch(
       `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
@@ -32,8 +41,7 @@ export const joinGame = async (
         headers: {
           "Content-Type": "application/json",
           accept: "application/json",
-          password: password,
-          player: playerName,
+          gameData: JSON.stringify(gameData),
         },
         body: JSON.stringify(bodyData),
       }
