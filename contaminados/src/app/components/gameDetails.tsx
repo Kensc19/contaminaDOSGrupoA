@@ -130,7 +130,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       const response = await fetch(
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/start`,
         {
-          method: "HEAD", // El método es HEAD
+          method: "HEAD", 
           headers: headers,
         }
       );

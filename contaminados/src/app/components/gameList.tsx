@@ -19,6 +19,14 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
   const limit = 15;
 
   useEffect(() => {
+    const intervalId = setInterval(() => {
+        fetchGames();
+    }, 5000); 
+
+    return () => clearInterval(intervalId); 
+  }, []);
+
+  useEffect(() => {
     fetchGames();
   }, []);
 
