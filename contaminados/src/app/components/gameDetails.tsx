@@ -18,7 +18,7 @@ interface GameDetailsProps {
   isOwner: boolean;
   view: string;
   setView: (view: string) => void;
-  setSelectedGame: (game: []) => void;
+  setSelectedGame: (game: Game) => void;
 }
 
 const GameDetails: React.FC<GameDetailsProps> = ({

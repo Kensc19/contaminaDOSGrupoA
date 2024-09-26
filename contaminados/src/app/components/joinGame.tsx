@@ -24,25 +24,22 @@ export const joinGame = async (
   password: string
 ) => {
   try {
-
-    let gameData: any = {};
+    const gameData: any = {
+      "Content-Type": "application/json",
+      accept: "application/json",
+      player: playerName,
+    };
 
     if (password?.trim()) {
       gameData.password = password.trim();
     }
 
-    gameData.player = playerName;
-    
     const bodyData = { player: playerName };
     const joinResponse = await fetch(
       `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          accept: "application/json",
-          gameData: JSON.stringify(gameData),
-        },
+        headers: gameData,
         body: JSON.stringify(bodyData),
       }
     );
@@ -64,7 +61,6 @@ export const joinGame = async (
     }
   } catch (error) {
     return { success: false, error: "Error en la petición: " + error };
-    throw new Error("Error en la petición:" + error);
   }
 };
 

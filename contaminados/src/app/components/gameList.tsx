@@ -11,56 +11,50 @@ interface gameListProps {
   onBack: () => void;
 }
 
-const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
+const GameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
   const [games, setGames] = useState<Game[]>([]);
-  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const limit = 15;
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 15; // Limitar a 15 juegos por página
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-        fetchGames();
-    }, 5000); 
+    fetchGames(currentPage);
+  }, [currentPage]);
 
-    return () => clearInterval(intervalId); 
-  }, []);
-
+  // Efecto para filtrar los juegos localmente
   useEffect(() => {
-    fetchGames();
-  }, []);
-
-  const fetchGames = async () => {
-    try {
-      const response = await fetch(
-        "https://contaminados.akamai.meseguercr.com/api/games?page=1&limit=250"
-      );
-      const data = await response.json();
-      if (data && Array.isArray(data.data)) {
-        setGames(data.data);
-        setFilteredGames(data.data.slice(0, limit));
-      }
-    } catch (error) {
-      throw new Error("Error fetching games:" + error);
-    }
-  };
-
-  const handleSearch = (page = 0) => {
     if (searchQuery.length >= 3) {
       const filtered = games.filter((game) =>
         game.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredGames(filtered.slice(page * limit, (page + 1) * limit));
-      setCurrentPage(page);
+      setGames(filtered);
     } else {
-      setFilteredGames(games.slice(page * limit, (page + 1) * limit));
-      setCurrentPage(page);
+      fetchGames(currentPage); // Si la búsqueda está vacía o es muy corta, vuelve a cargar los juegos
+    }
+  }, [searchQuery]);
+
+  // Función para obtener los juegos
+  const fetchGames = async (page: number) => {
+    try {
+      const response = await fetch(
+        `https://contaminados.akamai.meseguercr.com/api/games?page=${page + 1}&limit=${limit}`
+      );
+      const data = await response.json();
+      if (data && Array.isArray(data.data)) {
+        setGames(data.data); // Guardar los juegos obtenidos
+        setTotalPages(Math.ceil(data.total / limit)); // Calcular el total de páginas
+      }
+    } catch (error) {
+      console.error("Error fetching games:", error);
     }
   };
 
-  useEffect(() => {
-    handleSearch(0);
-  }, [searchQuery]);
+  // Función que se activa al hacer clic en "Buscar"
+  const handleSearch = () => {
+    setCurrentPage(0); // Reiniciamos a la primera página al realizar una nueva búsqueda
+    fetchGames(0); // Buscar desde la primera página
+  };
 
   return (
     <div className="mt-4">
@@ -70,21 +64,8 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
         className="form-control mb-3"
         placeholder="Buscar partidas..."
         value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleSearch(0);
-          }
-        }}
+        onChange={(e) => setSearchQuery(e.target.value)} // Actualizamos el término de búsqueda
       />
-      <button
-        type="button"
-        className="btn btn-primary mb-3"
-        onClick={() => handleSearch(0)}
-      >
-        Buscar
-      </button>
       <table className="table table-bordered">
         <thead>
           <tr>
@@ -94,8 +75,8 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
           </tr>
         </thead>
         <tbody>
-          {filteredGames.length > 0 ? (
-            filteredGames.map((game) => (
+          {games.length > 0 ? (
+            games.map((game) => (
               <tr key={game.id}>
                 <td>{game.name}</td>
                 <td>{game.owner}</td>
@@ -120,7 +101,7 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => handleSearch(currentPage - 1)}
+          onClick={() => setCurrentPage(currentPage - 1)}
           disabled={currentPage === 0}
         >
           Anterior
@@ -128,8 +109,8 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => handleSearch(currentPage + 1)}
-          disabled={filteredGames.length < limit}
+          onClick={() => setCurrentPage(currentPage + 1)}
+          disabled={currentPage + 1 >= totalPages}
         >
           Siguiente
         </button>
@@ -141,4 +122,4 @@ const gameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
   );
 };
 
-export default gameList;
+export default GameList;

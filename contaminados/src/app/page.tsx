@@ -33,7 +33,7 @@ export default function Home() {
   }, []);
 
   const [view, setView] = useState("home");
-  const [selectedGame, setSelectedGame] = useState(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [gamePassword, setGamePassword] = useState("");
   const [playerName, setPlayerName] = useState(""); // Nombre del jugador
@@ -184,14 +184,14 @@ export default function Home() {
         </>
       )}
 
-      {view === "gameStarted" && selectedGame &&(
+      {view === "gameStarted" && selectedGame && (
         <GameStart
-          selectedGame={selectedGame}
+          selectedGame={{ ...selectedGame, id: selectedGame.id || "" }}
           playerName={playerName}
           gamePassword={gamePassword}
           view={view}
           setView={setView}
-          />
+        />
       )}
 
       <div

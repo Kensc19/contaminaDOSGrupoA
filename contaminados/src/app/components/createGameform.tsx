@@ -39,6 +39,7 @@ const createGameForm: React.FC<createGameFormProps> = ({
         owner: game.owner,
       };
 
+      console.log("Datos enviado al crear la partida: ", createGame);
       if (game.password?.trim()) {
         gameData.password = game.password.trim();
       }
@@ -55,6 +56,9 @@ const createGameForm: React.FC<createGameFormProps> = ({
 
       if (response.ok) {
         const result: ApiResponse = await response.json();
+
+        console.log("Resultados del juego: " , result.data);
+
         onGameCreated(result.data, game.password || "");
       } else {
         setErrorMessage("Error al crear la partida.");
