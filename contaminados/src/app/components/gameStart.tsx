@@ -55,14 +55,14 @@ const GameStart: React.FC<GameStartProps> = ({
   const [roundAlreadyCounted, setRoundAlreadyCounted] = useState<string>("");
 
   const groupSizesPerRound = {
-    5: [2, 3, 2, 3, 3], 
-    6: [2, 3, 4, 3, 4], 
-    7: [2, 3, 3, 4, 4], 
-    8: [3, 4, 4, 5, 5], 
-    9: [3, 4, 4, 5, 5], 
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
     10: [3, 3, 4, 4, 5],
   };
-  
+
   useEffect(() => {
     if (selectedGame.status === "rounds") {
       getAllRounds(selectedGame.id, playerName, gamePassword);
@@ -85,12 +85,12 @@ const GameStart: React.FC<GameStartProps> = ({
     const handleModalClose = () => {
       setProposedGroup([]);
     };
-  
-    const modal = document.getElementById('leaderModal');
-    modal?.addEventListener('hidden.bs.modal', handleModalClose);
-  
+
+    const modal = document.getElementById("leaderModal");
+    modal?.addEventListener("hidden.bs.modal", handleModalClose);
+
     return () => {
-      modal?.removeEventListener('hidden.bs.modal', handleModalClose);
+      modal?.removeEventListener("hidden.bs.modal", handleModalClose);
     };
   }, []);
 
@@ -114,19 +114,24 @@ const GameStart: React.FC<GameStartProps> = ({
 
   const validateGroupSize = (currentRoundIndex: number) => {
     const numPlayers = selectedGame.players?.length || 0;
-  
+
     if (numPlayers < 5 || numPlayers > 10) {
       alert("El número de jugadores debe estar entre 5 y 10.");
       return false;
     }
-  
-    const requiredGroupSize = groupSizesPerRound[numPlayers as keyof typeof groupSizesPerRound][currentRoundIndex];
-    
+
+    const requiredGroupSize =
+      groupSizesPerRound[numPlayers as keyof typeof groupSizesPerRound][
+        currentRoundIndex
+      ];
+
     if (proposedGroup.length !== requiredGroupSize) {
-      alert(`Debes seleccionar ${requiredGroupSize} jugadores para esta ronda.`);
+      alert(
+        `Debes seleccionar ${requiredGroupSize} jugadores para esta ronda.`
+      );
       return false;
     }
-  
+
     return true;
   };
 
@@ -215,7 +220,9 @@ const GameStart: React.FC<GameStartProps> = ({
       setRoundAlreadyCounted(lastRound.id);
     }
 
-    const newRound = rounds.find((round) => round.status === "waiting-on-leader");
+    const newRound = rounds.find(
+      (round) => round.status === "waiting-on-leader"
+    );
     if (newRound) {
       setIdRondaActual(newRound.id);
       setLeaderActual(newRound.leader);
@@ -241,6 +248,16 @@ const GameStart: React.FC<GameStartProps> = ({
       alert("Ocurrió un error al actualizar la información: " + err);
     }
   };
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (selectedGame) {
+        handleUpdateInfo();
+      }
+    }, 6000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId); // Clean up on component unmount
+  }, [selectedGame, view]);
 
   const submitVote = async (voteValue: boolean) => {
     try {
@@ -287,19 +304,23 @@ const GameStart: React.FC<GameStartProps> = ({
       alert("No puedes proponer un grupo en esta fase.");
       return;
     }
-  
-    const currentRoundIndex = rounds.findIndex(round => round.status === "waiting-on-leader");
-  
+
+    const currentRoundIndex = rounds.findIndex(
+      (round) => round.status === "waiting-on-leader"
+    );
+
     if (!validateGroupSize(currentRoundIndex)) {
       return;
     }
-  
-    const currentRound = rounds.find(round => round.status === "waiting-on-leader");
+
+    const currentRound = rounds.find(
+      (round) => round.status === "waiting-on-leader"
+    );
     if (!currentRound) {
       alert("No hay una ronda actual disponible para proponer un grupo.");
       return;
     }
-  
+
     try {
       const headers = {
         accept: "application/json",
@@ -307,11 +328,11 @@ const GameStart: React.FC<GameStartProps> = ({
         player: playerName,
         ...(gamePassword && { password: gamePassword }),
       };
-  
+
       const body = {
         group: proposedGroup,
       };
-  
+
       const response = await fetch(
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
         {
