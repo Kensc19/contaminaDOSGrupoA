@@ -46,7 +46,7 @@ const GameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
         setTotalPages(Math.ceil(data.total / limit)); // Calcular el total de páginas
       }
     } catch (error) {
-      console.error("Error fetching games:", error);
+      throw new Error("Error fetching games:"+ error);
     }
   };
 

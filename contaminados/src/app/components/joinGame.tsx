@@ -72,6 +72,8 @@ const JoinGame: React.FC<JoinGameProps> = ({
 }) => {
   const [playerName, setPlayerName] = useState("");
   const [gamePassword, setGamePassword] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessageLocal] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import CustomModal from "./customModal";
 
 interface Game {
   id: string;
@@ -54,14 +56,25 @@ const GameStart: React.FC<GameStartProps> = ({
   const [enemiesScore, setEnemiesScore] = useState<number>(0);
   const [roundAlreadyCounted, setRoundAlreadyCounted] = useState<string>("");
 
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const handleCloseModal = () => setShowModal(false);
+
   const groupSizesPerRound = {
     5: [2, 3, 2, 3, 3],
     6: [2, 3, 4, 3, 4],
     7: [2, 3, 3, 4, 4],
     8: [3, 4, 4, 5, 5],
     9: [3, 4, 4, 5, 5],
-    10: [3, 3, 4, 4, 5],
+    10: [3, 4, 4, 5, 5],
   };
+
+  useEffect(() => {
+    if (selectedGame.status === "ended") {
+      setView("gameEnded"); // Cambiar la vista a "gameEnded"
+    }
+  }, [selectedGame.status, setView]);
 
   useEffect(() => {
     if (selectedGame.status === "rounds") {
@@ -95,28 +108,35 @@ const GameStart: React.FC<GameStartProps> = ({
   }, []);
 
   const handleApiErrors = (response: Response) => {
+    let message = "";
     if (response.status === 400) {
-      alert("Bad Request");
+      message = "Bad Request";
     } else if (response.status === 401) {
-      alert("Credenciales Inválidas");
+      message = "Credenciales Inválidas";
     } else if (response.status === 403) {
-      alert("No forma parte del juego");
+      message = "No forma parte del juego";
     } else if (response.status === 404) {
-      alert("Not found");
+      message = "Not found";
     } else if (response.status === 408) {
-      alert("Request Timeout");
+      message = "Request Timeout";
     } else if (response.status === 428) {
-      alert("Esta acción no está permitida en este momento");
+      message = "Esta acción no está permitida en este momento";
     } else {
-      alert("Error desconocido");
+      message = "Error desconocido";
     }
+    // Actualiza el mensaje y muestra el modal
+    setModalTitle("Error");
+    setModalMessage(message);
+    setShowModal(true);
   };
 
   const validateGroupSize = (currentRoundIndex: number) => {
     const numPlayers = selectedGame.players?.length || 0;
 
     if (numPlayers < 5 || numPlayers > 10) {
-      alert("El número de jugadores debe estar entre 5 y 10.");
+      setModalTitle("Error");
+      setModalMessage("El número de jugadores debe estar entre 5 y 10.");
+      setShowModal(true);
       return false;
     }
 
@@ -126,9 +146,11 @@ const GameStart: React.FC<GameStartProps> = ({
       ];
 
     if (proposedGroup.length !== requiredGroupSize) {
-      alert(
+      setModalTitle("Aviso");
+      setModalMessage(
         `Debes seleccionar ${requiredGroupSize} jugadores para esta ronda.`
       );
+      setShowModal(true);
       return false;
     }
 
@@ -161,7 +183,11 @@ const GameStart: React.FC<GameStartProps> = ({
         handleApiErrors(response);
       }
     } catch (err) {
-      alert("Ocurrió un error al traer la información de las rondas: " + err);
+      setModalTitle("Error");
+      setModalMessage(
+        "Ocurrió un error al traer la información de las rondas: " + err
+      );
+      setShowModal(true);
     }
   };
 
@@ -198,7 +224,11 @@ const GameStart: React.FC<GameStartProps> = ({
         handleApiErrors(response);
       }
     } catch (err) {
-      alert("Ocurrió un error al traer la información de la ronda: " + err);
+      setModalTitle("Error");
+      setModalMessage(
+        "Ocurrió un error al traer la información de la ronda: " + err
+      );
+      setShowModal(true);
     }
   };
 
@@ -231,7 +261,10 @@ const GameStart: React.FC<GameStartProps> = ({
       setGroupActual(newRound.group);
       setVotesActual(newRound.votes);
       resetVotesState();
-      alert("Una nueva ronda ha comenzado. ¡Escoge un nuevo grupo!");
+
+      setModalTitle("Nueva Ronda");
+      setModalMessage("Una nueva ronda ha comenzado. ¡Escoge un nuevo grupo!");
+      setShowModal(true);
     }
   };
 
@@ -245,11 +278,13 @@ const GameStart: React.FC<GameStartProps> = ({
         getRound(selectedGame.id, currentRound.id, playerName, gamePassword);
       }
     } catch (err) {
-      alert("Ocurrió un error al actualizar la información: " + err);
+      setModalTitle("Error");
+      setModalMessage("Ocurrió un error al actualizar la información: " + err);
+      setShowModal(true);
     }
   };
 
-  useEffect(() => {
+  /*useEffect(() => {
     const intervalId = setInterval(() => {
       if (selectedGame) {
         handleUpdateInfo();
@@ -257,13 +292,15 @@ const GameStart: React.FC<GameStartProps> = ({
     }, 6000); // Poll every 5 seconds
 
     return () => clearInterval(intervalId); // Clean up on component unmount
-  }, [selectedGame, view]);
+  }, [selectedGame, view]);*/
 
   const submitVote = async (voteValue: boolean) => {
     try {
       const currentRound = rounds.find((round) => round.status !== "ended");
       if (!currentRound) {
-        alert("No hay una ronda disponible para votar.");
+        setModalTitle("Error");
+        setModalMessage("No hay una ronda disponible para votar.");
+        setShowModal(true);
         return;
       }
 
@@ -286,7 +323,9 @@ const GameStart: React.FC<GameStartProps> = ({
       );
 
       if (response.ok) {
-        alert("Voto enviado correctamente");
+        setModalTitle("Vote enviado");
+        setModalMessage("Voto enviado correctamente");
+        setShowModal(true);
         setVotesState((prevState) => ({
           ...prevState,
           [playerName]: voteValue,
@@ -295,13 +334,17 @@ const GameStart: React.FC<GameStartProps> = ({
         handleApiErrors(response);
       }
     } catch (err) {
-      alert("Ocurrió un error al enviar el voto: " + err);
+      setModalTitle("Error");
+      setModalMessage("Ocurrió un error al enviar el voto: " + err);
+      setShowModal(true);
     }
   };
 
   const submitGroupProposal = async () => {
     if (statusActual !== "waiting-on-leader") {
-      alert("No puedes proponer un grupo en esta fase.");
+      setModalTitle("Error");
+      setModalMessage("No puedes proponer un grupo en esta fase.");
+      setShowModal(true);
       return;
     }
 
@@ -317,7 +360,11 @@ const GameStart: React.FC<GameStartProps> = ({
       (round) => round.status === "waiting-on-leader"
     );
     if (!currentRound) {
-      alert("No hay una ronda actual disponible para proponer un grupo.");
+      setModalTitle("Error");
+      setModalMessage(
+        "No hay una ronda actual disponible para proponer un grupo."
+      );
+      setShowModal(true);
       return;
     }
 
@@ -342,15 +389,21 @@ const GameStart: React.FC<GameStartProps> = ({
         }
       );
       if (response.ok) {
-        alert("Propuesta de grupo enviada correctamente");
+        setModalTitle("Éxito");
+        setModalMessage("Propuesta de grupo enviada correctamente");
+        setShowModal(true);
         resetVotesState();
       } else if (response.status === 428) {
-        alert("Esta acción no está permitida en este momento.");
+        setModalTitle("Error");
+        setModalMessage("Esta acción no está permitida en este momento.");
+        setShowModal(true);
       } else {
         handleApiErrors(response);
       }
     } catch (err) {
-      alert("Error al proponer grupo: " + err);
+      setModalTitle("Error");
+      setModalMessage("Error al proponer grupo: " + err);
+      setShowModal(true);
     }
   };
 
@@ -358,7 +411,9 @@ const GameStart: React.FC<GameStartProps> = ({
     try {
       const currentRound = rounds.find((round) => round.status !== "ended");
       if (!currentRound) {
-        alert("No hay una ronda disponible para realizar la acción.");
+        setModalTitle("Ronda no disponible");
+        setModalMessage("No hay una ronda disponible para realizar la acción.");
+        setShowModal(true);
         return;
       }
 
@@ -381,12 +436,16 @@ const GameStart: React.FC<GameStartProps> = ({
       );
 
       if (response.ok) {
-        alert("Acción realizada correctamente");
+        setModalTitle("Éxito");
+        setModalMessage("Acción realizada correctamente.");
+        setShowModal(true);
       } else {
         handleApiErrors(response);
       }
     } catch (err) {
-      alert("Ocurrió un error al realizar la acción: " + err);
+      setModalTitle("Error");
+      setModalMessage("Ocurrió un error al realizar la acción: " + err);
+      setShowModal(true);
     }
   };
 
@@ -445,6 +504,20 @@ const GameStart: React.FC<GameStartProps> = ({
                 : "Sin votos"}
             </li>
           </ul>
+
+          {selectedGame.enemies &&
+            selectedGame.enemies.length > 0 &&
+            selectedGame.enemies.includes(playerName) && (
+              <div>
+                <h3>Enemigos:</h3>
+                <ul>
+                  {selectedGame.enemies.map((enemy, index) => (
+                    <li key={index}>{enemy}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
           <button
             type="button"
             className="btn btn-primary mt-4"
@@ -509,6 +582,7 @@ const GameStart: React.FC<GameStartProps> = ({
               Sabotear
             </button>
           )}
+          
         </div>
       )}
 
@@ -572,6 +646,15 @@ const GameStart: React.FC<GameStartProps> = ({
           </div>
         </div>
       </div>
+
+      <CustomModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        title={modalTitle}
+        message={modalMessage}
+      />
+
+      
     </div>
   );
 };

@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import Button from "react-bootstrap/Button";
+import Modal from "react-bootstrap/Modal";
 
 interface Game {
   name: string;
@@ -31,7 +33,46 @@ const createGameForm: React.FC<createGameFormProps> = ({
     password: "",
   });
 
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessageLocal] = useState("");
+
+  const validateInputs = (game: Game) => {
+    if (game.name.length < 3) {
+      setErrorMessageLocal(
+        "El nombre de la partida debe tener al menos 3 caracteres."
+      );
+      return false;
+    }
+    if (game.owner.length < 3) {
+      setErrorMessageLocal(
+        "El nombre del propietario debe tener al menos 3 caracteres."
+      );
+      return false;
+    }
+    if (game.owner.length > 20) {
+      setErrorMessageLocal(
+        "El nombre del propietario debe tener menos de 20 caracteres."
+      );
+      return false;
+    }
+    if (game.password && (game.password.length > 0 && game.password.length < 3)) {
+      setErrorMessageLocal("La contraseña debe tener al menos 3 caracteres.");
+      return false;
+    }
+    if (game.password && game.password.length > 20) {
+      setErrorMessageLocal("La contraseña debe tener menos de 20 caracteres.");
+      return false;
+    }
+
+    return true;
+  };
+
   const createGame = async (game: Game) => {
+    if (!validateInputs(game)) {
+      setShowErrorModal(true);
+      return;
+    }
+
     try {
       // Aquí aseguramos que si no hay contraseña, se envíe como ""
       const gameData: any = {
@@ -39,7 +80,6 @@ const createGameForm: React.FC<createGameFormProps> = ({
         owner: game.owner,
       };
 
-      console.log("Datos enviado al crear la partida: ", createGame);
       if (game.password?.trim()) {
         gameData.password = game.password.trim();
       }
@@ -57,7 +97,6 @@ const createGameForm: React.FC<createGameFormProps> = ({
       if (response.ok) {
         const result: ApiResponse = await response.json();
 
-        console.log("Resultados del juego: " , result.data);
 
         onGameCreated(result.data, game.password || "");
       } else {
@@ -123,6 +162,18 @@ const createGameForm: React.FC<createGameFormProps> = ({
       >
         Cancelar
       </button>
+
+      <Modal show={showErrorModal} onHide={() => setShowErrorModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Error</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>{errorMessage}</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>
+            Cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </form>
   );
 };
