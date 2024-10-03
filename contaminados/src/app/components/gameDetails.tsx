@@ -202,16 +202,6 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       ) : (
         <p>No hay jugadores en la partida.</p>
       )}
-      <h3>Enemigos:</h3>
-      {selectedGame.enemies && selectedGame.enemies.length > 0 ? (
-        <ul>
-          {selectedGame.enemies.map((enemy, index) => (
-            <li key={index} className="player-card">{enemy}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No hay enemigos en la partida.</p>
-      )}
       <div className="button-group">
         <button
           type="button"
@@ -237,6 +227,12 @@ const GameDetails: React.FC<GameDetailsProps> = ({
           </button>
         )}
       </div>
+      <CustomModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        title={modalTitle}
+        message={modalMessage}
+      />
     </div>
   );
 };

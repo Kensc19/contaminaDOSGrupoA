@@ -85,7 +85,7 @@ const GameStart: React.FC<GameStartProps> = ({
   }>({});
   const [rounds, setRounds] = useState<Round[]>([]);
   const [error, setError] = useState<string>("");
-  
+
   const [currentRoundIndex, setCurrentRoundIndex] = useState<number>(0);
 
   const [proposedGroup, setProposedGroup] = useState<string[]>([]);
@@ -102,11 +102,11 @@ const GameStart: React.FC<GameStartProps> = ({
   const handleCloseWinnerModal = () => setShowWinnerModal(false);
 
   const groupSizesPerRound = {
-    5: [2, 3, 2, 3, 3], 
-    6: [2, 3, 4, 3, 4], 
-    7: [2, 3, 3, 4, 4], 
-    8: [3, 4, 4, 5, 5], 
-    9: [3, 4, 4, 5, 5], 
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
     10: [3, 4, 4, 5, 5],
   };
   // Nueva función para determinar quién ganó
@@ -131,21 +131,23 @@ const GameStart: React.FC<GameStartProps> = ({
     }
   }, [selectedGame.id, playerName, gamePassword]);
 
-// Effect to check the current round and update round index
-useEffect(() => {
-  const currentRound = rounds.find((round) => round.status !== "ended");
-  const lastRound = rounds[rounds.length - 1];
+  // Effect to check the current round and update round index
+  useEffect(() => {
+    const currentRound = rounds.find((round) => round.status !== "ended");
+    const lastRound = rounds[rounds.length - 1];
 
-  if (lastRound && lastRound.status === "ended") {
-    handleRoundEnd(lastRound);
-  } else if (currentRound) {
-    setIdRondaActual(currentRound.id);
-    // Update the round index based on current round
-    const roundIndex = rounds.findIndex((round) => round.id === currentRound.id);
-    setCurrentRoundIndex(roundIndex); // Set current round index
-    getRound(selectedGame.id, currentRound.id, playerName, gamePassword);
-  }
-}, [rounds]);
+    if (lastRound && lastRound.status === "ended") {
+      handleRoundEnd(lastRound);
+    } else if (currentRound) {
+      setIdRondaActual(currentRound.id);
+      // Update the round index based on current round
+      const roundIndex = rounds.findIndex(
+        (round) => round.id === currentRound.id
+      );
+      setCurrentRoundIndex(roundIndex); // Set current round index
+      getRound(selectedGame.id, currentRound.id, playerName, gamePassword);
+    }
+  }, [rounds]);
 
   useEffect(() => {
     const handleModalClose = () => {
@@ -236,7 +238,7 @@ useEffect(() => {
         setRounds(data.data);
         let enemiesCount = 0;
         let citizensCount = 0;
-        data.data.forEach((round:Round) => {
+        data.data.forEach((round: Round) => {
           if (round.result === "enemies") {
             enemiesCount++;
           } else if (round.result === "citizens") {
@@ -530,211 +532,236 @@ useEffect(() => {
   const isEnemy =
     selectedGame.enemies && selectedGame.enemies.includes(playerName);
 
-    return (
-      <div className="container-game">
-        <h2>El juego ha comenzado</h2>
-        <p>¡Buena suerte a todos los jugadores!</p>
-  
-        {/* Sección del marcador */}
+  return (
+    <div className="container-game">
+      <h2>El juego ha comenzado</h2>
+      <p>¡Buena suerte a todos los jugadores!</p>
+
+      {/* Sección del marcador */}
+      <div className="card">
+        <h3>Marcador</h3>
+        <p>Ciudadanos: {citizensScore}</p>
+        <p>Enemigos: {enemiesScore}</p>
+      </div>
+
+      {view === "gameStarted" && selectedGame && (
         <div className="card">
-          <h3>Marcador</h3>
-          <p>Ciudadanos: {citizensScore}</p>
-          <p>Enemigos: {enemiesScore}</p>
-        </div>
-  
-        {view === "gameStarted" && selectedGame && (
-          <div className="card">
-            <h3>Ronda Actual</h3>
-            <ul className="list-group">
-              <li className="list-group-item">
-                <strong>ID:</strong> {idRondaActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Líder:</strong> {leaderActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Resultado :</strong> {resultActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Estado:</strong> {statusActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Fase:</strong> {phaseActual}
-              </li>
-              <li className="list-group-item">
-                <strong>Grupo:</strong>{" "}
-                {groupActual && groupActual.length > 0
-                  ? groupActual.join(", ")
-                  : "Sin grupo"}
-              </li>
-              <li className="list-group-item">
-                <strong>Votos:</strong>{" "}
-                {votesActual && votesActual.length > 0
-                  ? votesActual.join(", ")
-                  : "Sin votos"}
-              </li>
-            </ul>
-  
-            {/* Botones más grandes */}
-            <div className="button-group">
+          <h3>Ronda Actual</h3>
+          <ul className="list-group">
+            <li className="list-group-item">
+              <strong>ID:</strong> {idRondaActual}
+            </li>
+            <li className="list-group-item">
+              <strong>Líder:</strong> {leaderActual}
+            </li>
+            <li className="list-group-item">
+              <strong>Resultado :</strong> {resultActual}
+            </li>
+            <li className="list-group-item">
+              <strong>Estado:</strong> {statusActual}
+            </li>
+            <li className="list-group-item">
+              <strong>Fase:</strong> {phaseActual}
+            </li>
+            <li className="list-group-item">
+              <strong>Grupo:</strong>{" "}
+              {groupActual && groupActual.length > 0
+                ? groupActual.join(", ")
+                : "Sin grupo"}
+            </li>
+            <li className="list-group-item">
+              <strong>Votos:</strong>{" "}
+              {votesActual && votesActual.length > 0
+                ? votesActual.join(", ")
+                : "Sin votos"}
+            </li>
+          </ul>
+
+          {/* Sección de enemigos */}
+          {selectedGame.enemies &&
+            selectedGame.enemies.length > 0 &&
+            selectedGame.enemies.includes(playerName) && (
+              <div className="card mt-4">
+                <h4 className="card-header">Enemigos:</h4>
+                <ul className="list-group list-group-flush">
+                  {selectedGame.enemies.map((enemy, index) => (
+                    <li key={index} className="list-group-item">
+                      {enemy}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+          {/* Botones más grandes */}
+          <div className="button-group">
+            <button
+              id="update-btn"
+              className="btn btn-lg btn-primary"
+              onClick={handleUpdateInfo}
+            >
+              <FaSyncAlt className="icon" /> Actualizar
+            </button>
+
+            {isLeader && (
               <button
-                id="update-btn"
-                className="btn btn-lg btn-primary"
-                onClick={handleUpdateInfo}
+                className="btn btn-lg btn-success"
+                data-bs-toggle="modal"
+                data-bs-target="#leaderModal"
+                onClick={submitGroupProposal}
               >
-                <FaSyncAlt className="icon" /> Actualizar
+                <FaUsers className="icon" /> Proponer Grupo
               </button>
-  
-              {isLeader && (
-                <button
-                  className="btn btn-lg btn-success"
-                  data-bs-toggle="modal"
-                  data-bs-target="#leaderModal"
-                  onClick={submitGroupProposal}
-                >
-                  <FaUsers className="icon" /> Proponer Grupo
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-  
-        {/* Nueva Sección: Lista de jugadores con íconos */}
-        <div className="card">
-          <h3>Jugadores en la partida</h3>
-          <div className="player-list-container">
-            {selectedGame.players?.map((player, index) => {
-              const Icon = icons[index]; // Asignar ícono según la posición del jugador
-              return (
-                <div key={index} className="player-card">
-                  <Icon className="player-icon" />{" "}
-                  <span className="player-name">{player}</span>
-                </div>
-              );
-            })}
+            )}
           </div>
         </div>
-  
-    {/* Votación */}
-    <div className="mt-4">
-      <h3>Votación</h3>
-      {votesState[playerName] === null ? (
-        <div className="button-group-vertical">
-          <button
-            className="btn btn-success me-2"
-            onClick={() => submitVote(true)}
-          >
-            <FaCheck className="icon" /> De acuerdo
-          </button>
-          <button
-            className="btn btn-danger"
-            onClick={() => submitVote(false)}
-          >
-            <FaTimes className="icon" /> En desacuerdo
-          </button>
-        </div>
-      ) : (
-        <p>Ya has votado: {votesState[playerName] ? "De acuerdo" : "En desacuerdo"}</p>
       )}
-    </div>
-  
-    {/* Acción en el grupo */}
-    {groupActual.includes(playerName) && (
+
+      {/* Nueva Sección: Lista de jugadores con íconos */}
+      <div className="card">
+        <h3>Jugadores en la partida</h3>
+        <div className="player-list-container">
+          {selectedGame.players?.map((player, index) => {
+            const Icon = icons[index]; // Asignar ícono según la posición del jugador
+            return (
+              <div key={index} className="player-card">
+                <Icon className="player-icon" />{" "}
+                <span className="player-name">{player}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Votación */}
       <div className="mt-4">
-        <h3>Acción en el grupo</h3>
-        <div className="button-group-vertical">
-          <button
-            className="btn btn-success me-2"
-            onClick={() => submitAction(true)}
-          >
-            <FaHandshake className="icon" /> Colaborar
-          </button>
-          {isEnemy && (
+        <h3>Votación</h3>
+        {votesState[playerName] === null ? (
+          <div className="button-group-vertical">
+            <button
+              className="btn btn-success me-2"
+              onClick={() => submitVote(true)}
+            >
+              <FaCheck className="icon" /> De acuerdo
+            </button>
             <button
               className="btn btn-danger"
-              onClick={() => submitAction(false)}
+              onClick={() => submitVote(false)}
             >
-              <FaSkullCrossbones className="icon" /> Sabotear
+              <FaTimes className="icon" /> En desacuerdo
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <p>
+            Ya has votado:{" "}
+            {votesState[playerName] ? "De acuerdo" : "En desacuerdo"}
+          </p>
+        )}
       </div>
-    )}
-        {/* Modal para seleccionar jugadores */}
-        <div
-          className="modal fade"
-          id="leaderModal"
-          tabIndex={-1}
-          aria-labelledby="leaderModalLabel"
-          aria-hidden="true"
-        >
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5
-                  className="modal-title"
-                  id="leaderModalLabel"
-                  style={{ color: "black", fontWeight: "bold" }}
-                >
-                  {" "}
-                  {/* Color negro y negrita */}
-                  Seleccionar Grupo
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  data-bs-dismiss="modal"
-                  aria-label="Close"
-                ></button>
-              </div>
-              <div className="modal-body">
-                <form id="groupForm" className="group-form">
-                  {selectedGame.players?.map((player, index) => {
-                    const Icon = icons[index]; // Asignar ícono a cada jugador
-                    return (
-                      <div key={index} className="form-check player-list">
-                        <Icon className="player-icon" />{" "}
-                        {/* Mostrar el ícono del jugador */}
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          value={player}
-                          checked={proposedGroup.includes(player)}
-                          onChange={() => handlePlayerSelection(player)}
-                          id={`player${index}`}
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor={`player${index}`}
-                        >
-                          {player}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  data-bs-dismiss="modal"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={submitGroupProposal}
-                >
-                  Enviar Propuesta
-                </button>
-              </div>
+
+      {/* Acción en el grupo */}
+      {groupActual.includes(playerName) && (
+        <div className="mt-4">
+          <h3>Acción en el grupo</h3>
+          <div className="button-group-vertical">
+            <button
+              className="btn btn-success me-2"
+              onClick={() => submitAction(true)}
+            >
+              <FaHandshake className="icon" /> Colaborar
+            </button>
+            {isEnemy && (
+              <button
+                className="btn btn-danger"
+                onClick={() => submitAction(false)}
+              >
+                <FaSkullCrossbones className="icon" /> Sabotear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Modal para seleccionar jugadores */}
+      <div
+        className="modal fade"
+        id="leaderModal"
+        tabIndex={-1}
+        aria-labelledby="leaderModalLabel"
+        aria-hidden="true"
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5
+                className="modal-title"
+                id="leaderModalLabel"
+                style={{ color: "black", fontWeight: "bold" }}
+              >
+                {" "}
+                {/* Color negro y negrita */}
+                Seleccionar Grupo
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div className="modal-body">
+              <form id="groupForm" className="group-form">
+                {selectedGame.players?.map((player, index) => {
+                  const Icon = icons[index]; // Asignar ícono a cada jugador
+                  return (
+                    <div key={index} className="form-check player-list">
+                      <Icon className="player-icon" />{" "}
+                      {/* Mostrar el ícono del jugador */}
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        value={player}
+                        checked={proposedGroup.includes(player)}
+                        onChange={() => handlePlayerSelection(player)}
+                        id={`player${index}`}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor={`player${index}`}
+                      >
+                        {player}
+                      </label>
+                    </div>
+                  );
+                })}
+              </form>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={submitGroupProposal}
+              >
+                Enviar Propuesta
+              </button>
             </div>
           </div>
         </div>
       </div>
-    );
+      <CustomModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        title={modalTitle}
+        message={modalMessage}
+      />
+    </div>
+  );
 };
 
 export default GameStart;
