@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import CustomModal from "./customModal";
 
 interface Game {
   name: string;
@@ -18,7 +19,7 @@ interface GameDetailsProps {
   isOwner: boolean;
   view: string;
   setView: (view: string) => void;
-  setSelectedGame: (game: []) => void;
+  setSelectedGame: (game: Game) => void;
 }
 
 const GameDetails: React.FC<GameDetailsProps> = ({
@@ -30,6 +31,12 @@ const GameDetails: React.FC<GameDetailsProps> = ({
   setView,
   setSelectedGame,
 }) => {
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  const handleCloseModal = () => setShowModal(false);
+
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (selectedGame) {
@@ -42,10 +49,22 @@ const GameDetails: React.FC<GameDetailsProps> = ({
 
   const handleRefreshGame = async () => {
     if (!playerName) {
-      alert(
+      setModalTitle("Error");
+      setModalMessage(
         "El nombre del jugador es requerido para refrescar la información del juego."
       );
+      setShowModal(true);
       return;
+    }
+
+    // Configura los headers de manera condicional
+    const headers: HeadersInit = {
+      accept: "application/json",
+      player: playerName,
+    };
+
+    if (gamePassword && gamePassword.trim()) {
+      headers.password = gamePassword.trim();
     }
 
     try {
@@ -53,11 +72,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}`,
         {
           method: "GET",
-          headers: {
-            accept: "application/json",
-            password: gamePassword,
-            player: playerName,
-          },
+          headers: headers,
         }
       );
       if (response.ok) {
@@ -68,71 +83,102 @@ const GameDetails: React.FC<GameDetailsProps> = ({
           setView("gameStarted");
         }
       } else {
-        alert("Error al refrescar el juego");
+        setModalTitle("Error");
+        setModalMessage("Error al refrescar el juego");
+        setShowModal(true);
       }
     } catch (error) {
-      alert("Error al refrescar el juego: " + error);
+      setModalTitle("Error");
+      setModalMessage("Error al refrescar el juego: " + error);
+      setShowModal(true);
       throw new Error("Error al refrescar el juego:" + error);
     }
   };
 
   const handleStartGameErrors = (response: Response) => {
     if (response.status === 401) {
-      alert("No autorizado para iniciar el juego.");
+      setModalTitle("Error");
+      setModalMessage("No autorizado para iniciar el juego.");
     } else if (response.status === 403) {
-      alert("Acceso prohibido.");
+      setModalTitle("Error");
+      setModalMessage("Acceso prohibido.");
     } else if (response.status === 404) {
-      alert("Juego no encontrado.");
+      setModalTitle("Error");
+      setModalMessage("Juego no encontrado.");
     } else if (response.status === 409) {
-      alert("El juego ya ha sido iniciado.");
+      setModalTitle("Error");
+      setModalMessage("El juego ya ha sido iniciado.");
     } else if (response.status === 428) {
-      alert("Se necesitan al menos 5 jugadores para iniciar el juego.");
+      setModalTitle("Error");
+      setModalMessage(
+        "Se necesitan al menos 5 jugadores para iniciar el juego."
+      );
     } else {
-      alert("Error desconocido al intentar iniciar el juego.");
+      setModalTitle("Error");
+      setModalMessage("Error desconocido al intentar iniciar el juego.");
     }
+    setShowModal(true);
   };
 
   const handleStartGame = async () => {
     if (!selectedGame || !selectedGame.players) {
-      alert("No hay información suficiente sobre los jugadores.");
+      setModalTitle("Error");
+      setModalMessage("No hay información suficiente sobre los jugadores.");
+      setShowModal(true);
       return;
     }
 
     const playerCount = selectedGame.players.length;
 
-    if (playerCount < 2) {
-      alert("Se necesitan al menos 2 jugadores para iniciar el juego.");
+    if (playerCount < 5) {
+      setModalTitle("Error");
+      setModalMessage(
+        "Se necesitan al menos 5 jugadores para iniciar el juego."
+      );
+      setShowModal(true);
       return;
     }
 
     if (playerCount > 10) {
-      alert("No puede haber más de 10 jugadores en el juego.");
+      setModalTitle("Error");
+      setModalMessage("No puede haber más de 10 jugadores en el juego.");
+      setShowModal(true);
       return;
+    }
+
+    // Configura los headers de manera condicional
+    const headers: HeadersInit = {
+      accept: "application/json",
+      player: playerName,
+    };
+
+    if (gamePassword && gamePassword.trim()) {
+      headers.password = gamePassword.trim();
     }
 
     try {
       const response = await fetch(
         `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/start`,
         {
-          method: "HEAD", // El método es HEAD
-          headers: {
-            "Content-Type": "application/json",
-            password: gamePassword,
-            player: playerName,
-          },
+          method: "HEAD",
+          headers: headers,
         }
       );
 
       if (response.ok) {
-        alert("Juego iniciado correctamente");
-        handleRefreshGame();
+        setModalTitle("Éxito");
+        setModalMessage("Juego iniciado correctamente");
+        setShowModal(true);
 
+        handleRefreshGame();
         setView("gameStarted");
       } else {
         handleStartGameErrors(response);
       }
     } catch (error) {
-      alert("Error al iniciar el juego: " + error);
+      setModalTitle("Error");
+      setModalMessage("Error al iniciar el juego: " + error);
+      setShowModal(true);
       throw new Error("Error en la petición:" + error);
     }
   };
@@ -153,16 +199,6 @@ const GameDetails: React.FC<GameDetailsProps> = ({
         </ul>
       ) : (
         <p>No hay jugadores en la partida.</p>
-      )}
-      <h3>Enemigos:</h3>
-      {selectedGame.enemies && selectedGame.enemies.length > 0 ? (
-        <ul>
-          {selectedGame.enemies.map((enemy, index) => (
-            <li key={index}>{enemy}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No hay enemigos en la partida.</p>
       )}
       <div className="d-flex justify-content-between mt-4">
         <button
@@ -189,6 +225,12 @@ const GameDetails: React.FC<GameDetailsProps> = ({
           </button>
         )}
       </div>
+      <CustomModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        title={modalTitle}
+        message={modalMessage}
+      />
     </div>
   );
 };

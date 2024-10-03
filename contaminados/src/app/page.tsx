@@ -7,6 +7,7 @@ import GameList from "./components/gameList";
 import JoinGame, { joinGame } from "./components/joinGame";
 import GameDetails from "./components/gameDetails";
 import GameStart from "./components/gameStart"; // Import the GameStart component
+import GameEnd from "./components/gameEnd"; // Import GameEnd
 
 interface Game {
   name: string;
@@ -33,7 +34,7 @@ export default function Home() {
   }, []);
 
   const [view, setView] = useState("home");
-  const [selectedGame, setSelectedGame] = useState(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [gamePassword, setGamePassword] = useState("");
   const [playerName, setPlayerName] = useState(""); // Nombre del jugador
@@ -42,6 +43,8 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
   const playerNameRef = useRef<HTMLInputElement>(null);
+  const [citizensScore, setCitizensScore] = useState<number>(0); // Track citizens score
+  const [enemiesScore, setEnemiesScore] = useState<number>(0); // Track enemies score
 
   const handleGameCreated = (game: Game, password: string) => {
     setSelectedGame(game);
@@ -79,6 +82,10 @@ export default function Home() {
   const handleSelectGame = (game: Game) => {
     setSelectedGame(game);
     setView("joinGame");
+  };
+
+  const handleReload = () => {
+    window.location.reload();
   };
 
   return (
@@ -184,16 +191,26 @@ export default function Home() {
         </>
       )}
 
-      {view === "gameStarted" && selectedGame &&(
+      {view === "gameStarted" && selectedGame && (
         <GameStart
-          selectedGame={selectedGame}
+          selectedGame={{ ...selectedGame, id: selectedGame.id || "" }}
           playerName={playerName}
           gamePassword={gamePassword}
           view={view}
           setView={setView}
-          />
+        />
       )}
 
+      {/* Mostrar la pantalla de fin de juego */}
+      {view === "gameEnded" && (
+        <GameEnd
+          citizensScore={citizensScore}
+          enemiesScore={enemiesScore}
+          onReload={handleReload}
+        />
+      )}
+
+      {/* Modal de error */}
       <div
         className={`modal fade ${showErrorModal ? "show" : ""}`}
         style={{ display: showErrorModal ? "block" : "none" }}

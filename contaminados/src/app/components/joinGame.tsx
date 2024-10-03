@@ -24,17 +24,22 @@ export const joinGame = async (
   password: string
 ) => {
   try {
+    const gameData: any = {
+      "Content-Type": "application/json",
+      accept: "application/json",
+      player: playerName,
+    };
+
+    if (password?.trim()) {
+      gameData.password = password.trim();
+    }
+
     const bodyData = { player: playerName };
     const joinResponse = await fetch(
       `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          accept: "application/json",
-          password: password,
-          player: playerName,
-        },
+        headers: gameData,
         body: JSON.stringify(bodyData),
       }
     );
@@ -56,7 +61,6 @@ export const joinGame = async (
     }
   } catch (error) {
     return { success: false, error: "Error en la petición: " + error };
-    throw new Error("Error en la petición:" + error);
   }
 };
 
@@ -68,6 +72,8 @@ const JoinGame: React.FC<JoinGameProps> = ({
 }) => {
   const [playerName, setPlayerName] = useState("");
   const [gamePassword, setGamePassword] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessageLocal] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
