@@ -16,12 +16,14 @@ interface JoinGameProps {
   onJoinGame: (gameId: string, playerName: string, password: string) => void;
   onCancel: () => void;
   playerNameRef: React.RefObject<HTMLInputElement>;
+  backEndAddress: string;
 }
 
 export const joinGame = async (
   gameId: string,
   playerName: string,
-  password: string
+  password: string,
+  backEndAddress: string
 ) => {
   try {
     const gameData: any = {
@@ -36,7 +38,7 @@ export const joinGame = async (
 
     const bodyData = { player: playerName };
     const joinResponse = await fetch(
-      `https://contaminados.akamai.meseguercr.com/api/games/${gameId}`,
+      `${backEndAddress}/api/games/${gameId}`,
       {
         method: "PUT",
         headers: gameData,
@@ -69,6 +71,7 @@ const JoinGame: React.FC<JoinGameProps> = ({
   onJoinGame,
   onCancel,
   playerNameRef,
+  backEndAddress
 }) => {
   const [playerName, setPlayerName] = useState("");
   const [gamePassword, setGamePassword] = useState("");
@@ -77,6 +80,11 @@ const JoinGame: React.FC<JoinGameProps> = ({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (selectedGame?.players && selectedGame.players.length >= 9) {
+      setErrorMessageLocal("La partida ya tiene 10 jugadores.");
+      setShowErrorModal(true);
+      return;
+    }
     if (selectedGame && selectedGame.id) {
       onJoinGame(selectedGame.id, playerName, gamePassword);
     }
@@ -87,38 +95,42 @@ const JoinGame: React.FC<JoinGameProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
+    <form onSubmit={handleSubmit} className="container-game">
       <h2>Unirse a la Partida: {selectedGame.name}</h2>
-      <div className="mb-3">
-        <label className="form-label">Nombre de Jugador</label>
-        <input
-          type="text"
-          className="form-control"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          required
-          ref={playerNameRef}
-        />
+      <div className="card">
+        <div className="mb-3">
+          <label className="form-label">Nombre de Jugador</label>
+          <input
+            type="text"
+            className="form-control"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            required
+            ref={playerNameRef}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Contraseña (si es necesaria)</label>
+          <input
+            type="password"
+            className="form-control"
+            value={gamePassword}
+            onChange={(e) => setGamePassword(e.target.value)}
+          />
+        </div>
+        <div className="button-group">
+          <button type="submit" className="btn btn-primary btn-lg">
+            Unirse
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-lg ms-2"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-      <div className="mb-3">
-        <label className="form-label">Contraseña (si es necesaria)</label>
-        <input
-          type="password"
-          className="form-control"
-          value={gamePassword}
-          onChange={(e) => setGamePassword(e.target.value)}
-        />
-      </div>
-      <button type="submit" className="btn btn-primary">
-        Unirse
-      </button>
-      <button
-        type="button"
-        className="btn btn-secondary ms-2"
-        onClick={onCancel}
-      >
-        Cancelar
-      </button>
     </form>
   );
 };

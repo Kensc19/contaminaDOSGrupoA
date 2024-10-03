@@ -7,7 +7,7 @@ import GameList from "./components/gameList";
 import JoinGame, { joinGame } from "./components/joinGame";
 import GameDetails from "./components/gameDetails";
 import GameStart from "./components/gameStart"; // Import the GameStart component
-import GameEnd from "./components/gameEnd"; // Import GameEnd
+
 
 interface Game {
   name: string;
@@ -59,7 +59,7 @@ export default function Home() {
     playerName: string,
     password: string
   ) => {
-    const result: JoinGameResult = await joinGame(gameId, playerName, password);
+    const result: JoinGameResult = await joinGame(gameId, playerName, password, backendAddress);
     if (result.success) {
       setSelectedGame(result.data || null);
       setGamePassword(password);
@@ -88,8 +88,11 @@ export default function Home() {
     window.location.reload();
   };
 
+  const handleSaveBackendAddress = () => {
+    setShowSettings(false);
+  };
   return (
-    <div className="container mt-5">
+    <div className="container-game">
       {view === "home" && (
         <>
           <button
@@ -102,12 +105,12 @@ export default function Home() {
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
             <button
-              className="btn btn-primary"
+              className="btn btn-primary btn-lg"
               onClick={() => setView("create")}
             >
               Crear Partida
             </button>
-            <button className="btn btn-success" onClick={() => setView("list")}>
+            <button className="btn btn-success btn-lg" onClick={() => setView("list")}>
               Unirse a Partida
             </button>
           </div>
@@ -118,12 +121,14 @@ export default function Home() {
           onGameCreated={handleGameCreated}
           onCancel={() => setView("home")}
           setErrorMessage={setErrorMessage}
+          backendAddress={backendAddress}
         />
       )}
       {view === "list" && (
         <GameList
           onSelectGame={handleSelectGame}
           onBack={() => setView("home")}
+          backEndAddress={backendAddress}
         />
       )}
       {/* Modal */}
@@ -154,7 +159,11 @@ export default function Home() {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-primary">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveBackendAddress}
+              >
                 Guardar
               </button>
               <button
@@ -174,6 +183,7 @@ export default function Home() {
           onJoinGame={handleJoinGame}
           onCancel={() => setView("list")}
           playerNameRef={playerNameRef}
+          backEndAddress={backendAddress}
         />
       )}
 
@@ -187,6 +197,7 @@ export default function Home() {
             view={view}
             setView={setView}
             setSelectedGame={setSelectedGame}
+            backEndAddress={backendAddress}
           />
         </>
       )}
@@ -198,18 +209,9 @@ export default function Home() {
           gamePassword={gamePassword}
           view={view}
           setView={setView}
+          backEndAddress={backendAddress}
         />
       )}
-
-      {/* Mostrar la pantalla de fin de juego */}
-      {view === "gameEnded" && (
-        <GameEnd
-          citizensScore={citizensScore}
-          enemiesScore={enemiesScore}
-          onReload={handleReload}
-        />
-      )}
-
       {/* Modal de error */}
       <div
         className={`modal fade ${showErrorModal ? "show" : ""}`}

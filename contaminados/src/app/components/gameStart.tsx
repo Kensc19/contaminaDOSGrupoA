@@ -1,7 +1,40 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import CustomModal from "./customModal";
+import {
+  FaUserAstronaut,
+  FaUserNinja,
+  FaUserSecret,
+  FaUserTie,
+  FaCheck,
+  FaTimes,
+  FaHandshake,
+  FaSkullCrossbones,
+  FaSyncAlt,
+  FaUsers,
+} from "react-icons/fa";
 
+import {
+  GiRobotGolem,
+  GiNinjaHeroicStance,
+  GiPirateHat,
+  GiWizardStaff,
+  GiVikingHelmet,
+  GiBlackKnightHelm,
+} from "react-icons/gi"; // Otros íconos interesantes
+
+const icons = [
+  FaUserAstronaut, // Jugador 1
+  FaUserNinja, // Jugador 2
+  FaUserSecret, // Jugador 3
+  FaUserTie, // Jugador 4
+  GiRobotGolem, // Jugador 5
+  GiNinjaHeroicStance, // Jugador 6
+  GiPirateHat, // Jugador 7
+  GiWizardStaff, // Jugador 8
+  GiVikingHelmet, // Jugador 9
+  GiBlackKnightHelm, // Jugador 10
+];
 interface Game {
   id: string;
   name: string;
@@ -29,6 +62,7 @@ interface GameStartProps {
   gamePassword: string;
   view: string;
   setView: (view: string) => void;
+  backEndAddress: string;
 }
 
 const GameStart: React.FC<GameStartProps> = ({
@@ -37,6 +71,7 @@ const GameStart: React.FC<GameStartProps> = ({
   gamePassword,
   view,
   setView,
+  backEndAddress,
 }) => {
   const [idRondaActual, setIdRondaActual] = useState<string>("");
   const [leaderActual, setLeaderActual] = useState<string>("");
@@ -50,6 +85,8 @@ const GameStart: React.FC<GameStartProps> = ({
   }>({});
   const [rounds, setRounds] = useState<Round[]>([]);
   const [error, setError] = useState<string>("");
+  
+  const [currentRoundIndex, setCurrentRoundIndex] = useState<number>(0);
 
   const [proposedGroup, setProposedGroup] = useState<string[]>([]);
   const [citizensScore, setCitizensScore] = useState<number>(0);
@@ -60,21 +97,33 @@ const GameStart: React.FC<GameStartProps> = ({
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const handleCloseModal = () => setShowModal(false);
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [winnerMessage, setWinnerMessage] = useState("");
+  const handleCloseWinnerModal = () => setShowWinnerModal(false);
 
   const groupSizesPerRound = {
-    5: [2, 3, 2, 3, 3],
-    6: [2, 3, 4, 3, 4],
-    7: [2, 3, 3, 4, 4],
-    8: [3, 4, 4, 5, 5],
-    9: [3, 4, 4, 5, 5],
+    5: [2, 3, 2, 3, 3], 
+    6: [2, 3, 4, 3, 4], 
+    7: [2, 3, 3, 4, 4], 
+    8: [3, 4, 4, 5, 5], 
+    9: [3, 4, 4, 5, 5], 
     10: [3, 4, 4, 5, 5],
   };
-
+  // Nueva función para determinar quién ganó
+  const determineWinner = () => {
+    if (citizensScore > enemiesScore) {
+      return "¡Los Ciudadanos Ganaron!";
+    } else {
+      return "¡Los Enemigos Ganaron!";
+    }
+  };
   useEffect(() => {
     if (selectedGame.status === "ended") {
-      setView("gameEnded"); // Cambiar la vista a "gameEnded"
+      const winnerMessage = determineWinner();
+      setWinnerMessage(winnerMessage); // Configurar mensaje de ganador
+      setShowWinnerModal(true); // Mostrar el modal de ganador
     }
-  }, [selectedGame.status, setView]);
+  }, [selectedGame.status, citizensScore, enemiesScore]);
 
   useEffect(() => {
     if (selectedGame.status === "rounds") {
@@ -82,17 +131,21 @@ const GameStart: React.FC<GameStartProps> = ({
     }
   }, [selectedGame.id, playerName, gamePassword]);
 
-  useEffect(() => {
-    const currentRound = rounds.find((round) => round.status !== "ended");
-    const lastRound = rounds[rounds.length - 1];
+// Effect to check the current round and update round index
+useEffect(() => {
+  const currentRound = rounds.find((round) => round.status !== "ended");
+  const lastRound = rounds[rounds.length - 1];
 
-    if (lastRound && lastRound.status === "ended") {
-      handleRoundEnd(lastRound);
-    } else if (currentRound) {
-      setIdRondaActual(currentRound.id);
-      getRound(selectedGame.id, currentRound.id, playerName, gamePassword);
-    }
-  }, [rounds]);
+  if (lastRound && lastRound.status === "ended") {
+    handleRoundEnd(lastRound);
+  } else if (currentRound) {
+    setIdRondaActual(currentRound.id);
+    // Update the round index based on current round
+    const roundIndex = rounds.findIndex((round) => round.id === currentRound.id);
+    setCurrentRoundIndex(roundIndex); // Set current round index
+    getRound(selectedGame.id, currentRound.id, playerName, gamePassword);
+  }
+}, [rounds]);
 
   useEffect(() => {
     const handleModalClose = () => {
@@ -119,18 +172,20 @@ const GameStart: React.FC<GameStartProps> = ({
       message = "Not found";
     } else if (response.status === 408) {
       message = "Request Timeout";
+    } else if (response.status === 409) {
+      message = "Ya has votado en esta ronda";
     } else if (response.status === 428) {
       message = "Esta acción no está permitida en este momento";
     } else {
-      message = "Error desconocido";
+      message = "Esta acción no esta permitida en este momento de la partida";
     }
     // Actualiza el mensaje y muestra el modal
-    setModalTitle("Error");
+    setModalTitle("Error en Partida");
     setModalMessage(message);
     setShowModal(true);
   };
 
-  const validateGroupSize = (currentRoundIndex: number) => {
+  const validateGroupSize = () => {
     const numPlayers = selectedGame.players?.length || 0;
 
     if (numPlayers < 5 || numPlayers > 10) {
@@ -170,7 +225,7 @@ const GameStart: React.FC<GameStartProps> = ({
       };
 
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds`,
+        `${backEndAddress}/api/games/${gameId}/rounds`,
         {
           method: "GET",
           headers: headers,
@@ -179,6 +234,17 @@ const GameStart: React.FC<GameStartProps> = ({
       if (response.ok) {
         const data = await response.json();
         setRounds(data.data);
+        let enemiesCount = 0;
+        let citizensCount = 0;
+        data.data.forEach((round:Round) => {
+          if (round.result === "enemies") {
+            enemiesCount++;
+          } else if (round.result === "citizens") {
+            citizensCount++;
+          }
+        });
+        setCitizensScore(citizensCount);
+        setEnemiesScore(enemiesCount);
       } else {
         handleApiErrors(response);
       }
@@ -205,7 +271,7 @@ const GameStart: React.FC<GameStartProps> = ({
       };
 
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${gameId}/rounds/${roundId}`,
+        `${backEndAddress}/api/games/${gameId}/rounds/${roundId}`,
         {
           method: "GET",
           headers: headers,
@@ -242,11 +308,18 @@ const GameStart: React.FC<GameStartProps> = ({
 
   const handleRoundEnd = (lastRound: Round) => {
     if (lastRound.id !== roundAlreadyCounted) {
-      if (lastRound.result === "citizens") {
-        setCitizensScore((prevScore) => prevScore + 1);
-      } else if (lastRound.result === "enemies") {
-        setEnemiesScore((prevScore) => prevScore + 1);
-      }
+      let enemiesCount = 0;
+      let citizensCount = 0;
+      rounds.forEach((round) => {
+        if (round.result === "citizens") {
+          citizensCount += 1;
+        } else if (round.result === "enemies") {
+          enemiesCount += 1;
+        }
+      });
+      setCitizensScore(citizensCount);
+      setEnemiesScore(enemiesCount);
+
       setRoundAlreadyCounted(lastRound.id);
     }
 
@@ -312,7 +385,7 @@ const GameStart: React.FC<GameStartProps> = ({
       };
 
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
+        `${backEndAddress}/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
         {
           method: "POST",
           headers: headers,
@@ -348,11 +421,7 @@ const GameStart: React.FC<GameStartProps> = ({
       return;
     }
 
-    const currentRoundIndex = rounds.findIndex(
-      (round) => round.status === "waiting-on-leader"
-    );
-
-    if (!validateGroupSize(currentRoundIndex)) {
+    if (!validateGroupSize()) {
       return;
     }
 
@@ -381,7 +450,7 @@ const GameStart: React.FC<GameStartProps> = ({
       };
 
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
+        `${backEndAddress}/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
         {
           method: "PATCH",
           headers: headers,
@@ -425,7 +494,7 @@ const GameStart: React.FC<GameStartProps> = ({
       };
 
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
+        `${backEndAddress}/api/games/${selectedGame.id}/rounds/${currentRound.id}`,
         {
           method: "PUT",
           headers: headers,
@@ -461,202 +530,211 @@ const GameStart: React.FC<GameStartProps> = ({
   const isEnemy =
     selectedGame.enemies && selectedGame.enemies.includes(playerName);
 
-  return (
-    <div className="mt-4">
-      <h2>El juego ha comenzado</h2>
-      <p>¡Buena suerte a todos los jugadores!</p>
-
-      <div className="mt-4">
-        <h3>Marcador</h3>
-        <p>Ciudadanos: {citizensScore}</p>
-        <p>Enemigos: {enemiesScore}</p>
-      </div>
-
-      {view === "gameStarted" && selectedGame && (
-        <div>
-          <h2>Ronda Actual</h2>
-          <ul className="list-group">
-            <li className="list-group-item">
-              <strong>ID:</strong> {idRondaActual}
-            </li>
-            <li className="list-group-item">
-              <strong>Líder:</strong> {leaderActual}
-            </li>
-            <li className="list-group-item">
-              <strong>Resultado :</strong> {resultActual}
-            </li>
-            <li className="list-group-item">
-              <strong>Estado:</strong> {statusActual}
-            </li>
-            <li className="list-group-item">
-              <strong>Fase:</strong> {phaseActual}
-            </li>
-            <li className="list-group-item">
-              <strong>Grupo:</strong>{" "}
-              {groupActual && groupActual.length > 0
-                ? groupActual.join(", ")
-                : "Sin grupo"}
-            </li>
-            <li className="list-group-item">
-              <strong>Votos:</strong>{" "}
-              {votesActual && votesActual.length > 0
-                ? votesActual.join(", ")
-                : "Sin votos"}
-            </li>
-          </ul>
-
-          {selectedGame.enemies &&
-            selectedGame.enemies.length > 0 &&
-            selectedGame.enemies.includes(playerName) && (
-              <div>
-                <h3>Enemigos:</h3>
-                <ul>
-                  {selectedGame.enemies.map((enemy, index) => (
-                    <li key={index}>{enemy}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-          <button
-            type="button"
-            className="btn btn-primary mt-4"
-            onClick={handleUpdateInfo}
-          >
-            Actualizar Información
-          </button>
-
-          {isLeader && (
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              data-bs-toggle="modal"
-              data-bs-target="#leaderModal"
-              onClick={submitGroupProposal}
-            >
-              Proponer Grupo
-            </button>
-          )}
+    return (
+      <div className="container-game">
+        <h2>El juego ha comenzado</h2>
+        <p>¡Buena suerte a todos los jugadores!</p>
+  
+        {/* Sección del marcador */}
+        <div className="card">
+          <h3>Marcador</h3>
+          <p>Ciudadanos: {citizensScore}</p>
+          <p>Enemigos: {enemiesScore}</p>
         </div>
-      )}
-
-      <div className="mt-4">
-        <h3>Votación</h3>
-        {votesState[playerName] === null ? (
-          <div>
-            <button
-              className="btn btn-success me-2"
-              onClick={() => submitVote(true)}
-            >
-              De acuerdo
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => submitVote(false)}
-            >
-              En desacuerdo
-            </button>
+  
+        {view === "gameStarted" && selectedGame && (
+          <div className="card">
+            <h3>Ronda Actual</h3>
+            <ul className="list-group">
+              <li className="list-group-item">
+                <strong>ID:</strong> {idRondaActual}
+              </li>
+              <li className="list-group-item">
+                <strong>Líder:</strong> {leaderActual}
+              </li>
+              <li className="list-group-item">
+                <strong>Resultado :</strong> {resultActual}
+              </li>
+              <li className="list-group-item">
+                <strong>Estado:</strong> {statusActual}
+              </li>
+              <li className="list-group-item">
+                <strong>Fase:</strong> {phaseActual}
+              </li>
+              <li className="list-group-item">
+                <strong>Grupo:</strong>{" "}
+                {groupActual && groupActual.length > 0
+                  ? groupActual.join(", ")
+                  : "Sin grupo"}
+              </li>
+              <li className="list-group-item">
+                <strong>Votos:</strong>{" "}
+                {votesActual && votesActual.length > 0
+                  ? votesActual.join(", ")
+                  : "Sin votos"}
+              </li>
+            </ul>
+  
+            {/* Botones más grandes */}
+            <div className="button-group">
+              <button
+                id="update-btn"
+                className="btn btn-lg btn-primary"
+                onClick={handleUpdateInfo}
+              >
+                <FaSyncAlt className="icon" /> Actualizar
+              </button>
+  
+              {isLeader && (
+                <button
+                  className="btn btn-lg btn-success"
+                  data-bs-toggle="modal"
+                  data-bs-target="#leaderModal"
+                  onClick={submitGroupProposal}
+                >
+                  <FaUsers className="icon" /> Proponer Grupo
+                </button>
+              )}
+            </div>
           </div>
-        ) : (
-          <p>
-            Ya has votado:{" "}
-            {votesState[playerName] ? "De acuerdo" : "En desacuerdo"}
-          </p>
         )}
-      </div>
-
-      {groupActual.includes(playerName) && (
-        <div className="mt-4">
-          <h3>Acción en el grupo</h3>
+  
+        {/* Nueva Sección: Lista de jugadores con íconos */}
+        <div className="card">
+          <h3>Jugadores en la partida</h3>
+          <div className="player-list-container">
+            {selectedGame.players?.map((player, index) => {
+              const Icon = icons[index]; // Asignar ícono según la posición del jugador
+              return (
+                <div key={index} className="player-card">
+                  <Icon className="player-icon" />{" "}
+                  <span className="player-name">{player}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+  
+    {/* Votación */}
+    <div className="mt-4">
+      <h3>Votación</h3>
+      {votesState[playerName] === null ? (
+        <div className="button-group-vertical">
+          <button
+            className="btn btn-success me-2"
+            onClick={() => submitVote(true)}
+          >
+            <FaCheck className="icon" /> De acuerdo
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => submitVote(false)}
+          >
+            <FaTimes className="icon" /> En desacuerdo
+          </button>
+        </div>
+      ) : (
+        <p>Ya has votado: {votesState[playerName] ? "De acuerdo" : "En desacuerdo"}</p>
+      )}
+    </div>
+  
+    {/* Acción en el grupo */}
+    {groupActual.includes(playerName) && (
+      <div className="mt-4">
+        <h3>Acción en el grupo</h3>
+        <div className="button-group-vertical">
           <button
             className="btn btn-success me-2"
             onClick={() => submitAction(true)}
           >
-            Colaborar
+            <FaHandshake className="icon" /> Colaborar
           </button>
           {isEnemy && (
             <button
               className="btn btn-danger"
               onClick={() => submitAction(false)}
             >
-              Sabotear
+              <FaSkullCrossbones className="icon" /> Sabotear
             </button>
           )}
-          
         </div>
-      )}
-
-      <div
-        className="modal fade"
-        id="leaderModal"
-        tabIndex={-1}
-        aria-labelledby="leaderModalLabel"
-        aria-hidden="true"
-      >
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title" id="leaderModalLabel">
-                Seleccionar Grupo
-              </h5>
-              <button
-                type="button"
-                className="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-            <div className="modal-body">
-              <form id="groupForm">
-                {selectedGame.players?.map((player, index) => (
-                  <div key={index} className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      value={player}
-                      onChange={() => handlePlayerSelection(player)}
-                      id={`player${index}`}
-                    />
-                    <label
-                      className="form-check-label"
-                      htmlFor={`player${index}`}
-                    >
-                      {player}
-                    </label>
-                  </div>
-                ))}
-              </form>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={submitGroupProposal}
-              >
-                Enviar Propuesta
-              </button>
+      </div>
+    )}
+        {/* Modal para seleccionar jugadores */}
+        <div
+          className="modal fade"
+          id="leaderModal"
+          tabIndex={-1}
+          aria-labelledby="leaderModalLabel"
+          aria-hidden="true"
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5
+                  className="modal-title"
+                  id="leaderModalLabel"
+                  style={{ color: "black", fontWeight: "bold" }}
+                >
+                  {" "}
+                  {/* Color negro y negrita */}
+                  Seleccionar Grupo
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form id="groupForm" className="group-form">
+                  {selectedGame.players?.map((player, index) => {
+                    const Icon = icons[index]; // Asignar ícono a cada jugador
+                    return (
+                      <div key={index} className="form-check player-list">
+                        <Icon className="player-icon" />{" "}
+                        {/* Mostrar el ícono del jugador */}
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          value={player}
+                          checked={proposedGroup.includes(player)}
+                          onChange={() => handlePlayerSelection(player)}
+                          id={`player${index}`}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor={`player${index}`}
+                        >
+                          {player}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={submitGroupProposal}
+                >
+                  Enviar Propuesta
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <CustomModal
-        show={showModal}
-        handleClose={handleCloseModal}
-        title={modalTitle}
-        message={modalMessage}
-      />
-
-      
-    </div>
-  );
+    );
 };
 
 export default GameStart;

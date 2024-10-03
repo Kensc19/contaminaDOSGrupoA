@@ -20,12 +20,14 @@ interface createGameFormProps {
   onGameCreated: (game: Game, password: string) => void;
   onCancel: () => void;
   setErrorMessage: (message: string) => void;
+  backendAddress: string;
 }
 
 const createGameForm: React.FC<createGameFormProps> = ({
   onGameCreated,
   onCancel,
   setErrorMessage,
+  backendAddress,
 }) => {
   const [gameDetails, setGameDetails] = useState<Game>({
     name: "",
@@ -84,7 +86,7 @@ const createGameForm: React.FC<createGameFormProps> = ({
         gameData.password = game.password.trim();
       }
       const response = await fetch(
-        "https://contaminados.akamai.meseguercr.com/api/games",
+        `${backendAddress}api/games`,
         {
           method: "POST",
           headers: {
@@ -96,11 +98,13 @@ const createGameForm: React.FC<createGameFormProps> = ({
 
       if (response.ok) {
         const result: ApiResponse = await response.json();
-
-
         onGameCreated(result.data, game.password || "");
+      } else if (response.status === 409) {
+        setErrorMessageLocal("Ya existe una partida con ese nombre.");
+        setShowErrorModal(true);
       } else {
         setErrorMessage("Error al crear la partida.");
+        setShowErrorModal(true);
         throw new Error("Error al crear la partida");
       }
     } catch (error) {
@@ -115,7 +119,7 @@ const createGameForm: React.FC<createGameFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
+    <form onSubmit={handleSubmit} className="container-game">
       <h2>Crear Partida</h2>
       <div className="mb-3">
         <label className="form-label">Nombre de la Partida</label>
