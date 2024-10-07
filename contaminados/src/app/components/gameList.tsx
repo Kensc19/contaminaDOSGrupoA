@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 
 interface Game {
   id?: string;
@@ -6,118 +6,137 @@ interface Game {
   owner: string;
 }
 
-interface gameListProps {
+interface GameListProps {
   onSelectGame: (game: Game) => void;
   onBack: () => void;
+  backEndAddress: string;
 }
 
-const GameList: React.FC<gameListProps> = ({ onSelectGame, onBack }) => {
+const GameList: React.FC<GameListProps> = ({
+  onSelectGame,
+  onBack,
+  backEndAddress,
+}) => {
   const [games, setGames] = useState<Game[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 15; // Limitar a 15 juegos por página
+  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const limitPerPage = 15;
 
   useEffect(() => {
-    fetchGames(currentPage);
-  }, [currentPage]);
+    // Función para obtener todas las partidas, recorriendo todas las páginas
+    const fetchAllGames = async () => {
+      setLoading(true);
+      let allGames: Game[] = [];
+      let page = 0;
+      let fetchedData: Game[] = [];
 
-  // Efecto para filtrar los juegos localmente
+      do {
+        try {
+          // Hacer la solicitud al backend por cada página con `fetch`
+          const response = await fetch(
+            `${backEndAddress}/api/games?page=${page}&limit=50`
+          );
+          const result = await response.json();
+
+          fetchedData = result.data as Game[]; // Asumimos que la respuesta sigue la estructura { data: Game[] }
+          allGames = [...allGames, ...fetchedData];
+          page += 1; // Avanzar a la siguiente página
+        } catch (error) {
+          console.error('Error al cargar las partidas', error);
+          setLoading(false);
+          return;
+        }
+      } while (fetchedData.length > 0); // Detener si ya no hay más resultados
+
+      setGames(allGames);
+      setLoading(false);
+    };
+
+    fetchAllGames();
+  }, [backEndAddress]);
+
+  // Filtrar los juegos por nombre cada vez que se cambia la búsqueda
   useEffect(() => {
     if (searchQuery.length >= 3) {
-      const filtered = games.filter((game) =>
+      const filtered = games.filter(game =>
         game.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setGames(filtered);
+      setFilteredGames(filtered);
     } else {
-      fetchGames(currentPage); // Si la búsqueda está vacía o es muy corta, vuelve a cargar los juegos
+      setFilteredGames(games); // Si no hay búsqueda, mostrar todos los juegos
     }
-  }, [searchQuery]);
+  }, [searchQuery, games]);
 
-  // Función para obtener los juegos
-  const fetchGames = async (page: number) => {
-    try {
-      const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games?page=${page + 1}&limit=${limit}`
-      );
-      const data = await response.json();
-      if (data && Array.isArray(data.data)) {
-        setGames(data.data); // Guardar los juegos obtenidos
-        setTotalPages(Math.ceil(data.total / limit)); // Calcular el total de páginas
-      }
-    } catch (error) {
-      throw new Error("Error fetching games:"+ error);
-    }
-  };
+  // Obtener las partidas a mostrar en la página actual
+  const paginatedGames = filteredGames.slice(
+    (currentPage - 1) * limitPerPage,
+    currentPage * limitPerPage
+  );
 
-  // Función que se activa al hacer clic en "Buscar"
-  const handleSearch = () => {
-    setCurrentPage(0); // Reiniciamos a la primera página al realizar una nueva búsqueda
-    fetchGames(0); // Buscar desde la primera página
-  };
+  const totalPages = Math.ceil(filteredGames.length / limitPerPage);
 
   return (
-    <div className="mt-4">
-      <h2>Lista de Partidas Disponibles</h2>
+    <div className="game-list-container">
+      <button className="back-button" onClick={onBack}>Regresar</button>
+
       <input
         type="text"
-        className="form-control mb-3"
-        placeholder="Buscar partidas..."
+        className="search-input"
+        placeholder="Buscar partida..."
         value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)} // Actualizamos el término de búsqueda
+        onChange={(e) => setSearchQuery(e.target.value)}
       />
-      <table className="table table-bordered">
-        <thead>
-          <tr>
-            <th>Nombre de la Partida</th>
-            <th>Propietario</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {games.length > 0 ? (
-            games.map((game) => (
-              <tr key={game.id}>
-                <td>{game.name}</td>
-                <td>{game.owner}</td>
-                <td className="text-end">
-                  <button
-                    className="btn btn-success"
-                    onClick={() => onSelectGame(game)}
-                  >
-                    Unirse
-                  </button>
-                </td>
+
+      {loading ? (
+        <p>Cargando partidas...</p>
+      ) : (
+        <div>
+          <table className="game-table">
+            <thead>
+              <tr>
+                <th>Nombre de la partida</th>
+                <th>Propietario</th>
+                <th>Acción</th>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={3}>No hay partidas disponibles</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      <div className="gap-3 d-md-flex justify-content-md-end mb-3">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => setCurrentPage(currentPage - 1)}
-          disabled={currentPage === 0}
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => setCurrentPage(currentPage + 1)}
-          disabled={currentPage + 1 >= totalPages}
-        >
-          Siguiente
-        </button>
-      </div>
-      <button type="button" className="btn btn-secondary mt-3" onClick={onBack}>
-        Volver
-      </button>
+            </thead>
+            <tbody>
+              {paginatedGames.map((game) => (
+                <tr key={game.id}>
+                  <td>{game.name}</td>
+                  <td>{game.owner}</td>
+                  <td>
+                    <button className="select-button" onClick={() => onSelectGame(game)}>
+                      Seleccionar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="pagination-controls">
+            <button
+              className="pagination-button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </button>
+
+            <span>Página {currentPage} de {totalPages}</span>
+
+            <button
+              className="pagination-button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

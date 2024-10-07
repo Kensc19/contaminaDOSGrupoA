@@ -7,7 +7,8 @@ import GameList from "./components/gameList";
 import JoinGame, { joinGame } from "./components/joinGame";
 import GameDetails from "./components/gameDetails";
 import GameStart from "./components/gameStart"; // Import the GameStart component
-import GameEnd from "./components/gameEnd"; // Import GameEnd
+import "bootstrap/dist/css/bootstrap.min.css";
+import CustomModal from "./components/customModal";
 
 interface Game {
   name: string;
@@ -40,6 +41,8 @@ export default function Home() {
   const [playerName, setPlayerName] = useState(""); // Nombre del jugador
   const [isOwner, setIsOwner] = useState(false); // Indica si el jugador es el propietario
   const [backendAddress, setBackendAddress] = useState("");
+  const [showBackendErrorModal, setShowBackendErrorModal] =
+    useState<boolean>(false); // Modal para backendAddress vacío
   const [showSettings, setShowSettings] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
   const playerNameRef = useRef<HTMLInputElement>(null);
@@ -47,6 +50,7 @@ export default function Home() {
   const [enemiesScore, setEnemiesScore] = useState<number>(0); // Track enemies score
 
   const handleGameCreated = (game: Game, password: string) => {
+    if (!validateBackendAddress()) return; // Validate backend address
     setSelectedGame(game);
     setGamePassword(password);
     setPlayerName(game.owner); // El propietario es el creador de la partida
@@ -59,7 +63,13 @@ export default function Home() {
     playerName: string,
     password: string
   ) => {
-    const result: JoinGameResult = await joinGame(gameId, playerName, password);
+    if (!validateBackendAddress()) return; // Validate backend address
+    const result: JoinGameResult = await joinGame(
+      gameId,
+      playerName,
+      password,
+      backendAddress
+    );
     if (result.success) {
       setSelectedGame(result.data || null);
       setGamePassword(password);
@@ -72,6 +82,16 @@ export default function Home() {
     }
   };
 
+  const validateBackendAddress = () => {
+    if (backendAddress.trim() === "" ||
+      backendAddress === null
+    ) {
+      setShowBackendErrorModal(true); // Mostrar modal si backendAddress es vacío o nulo
+      return false;
+    }
+    return true;
+  };
+
   const handleCloseErrorModal = () => {
     setShowErrorModal(false);
     if (playerNameRef.current) {
@@ -79,7 +99,12 @@ export default function Home() {
     }
   };
 
+  const handleCloseBackendErrorModal = () => {
+    setShowBackendErrorModal(false);
+  };
+
   const handleSelectGame = (game: Game) => {
+    if (!validateBackendAddress()) return;
     setSelectedGame(game);
     setView("joinGame");
   };
@@ -88,8 +113,11 @@ export default function Home() {
     window.location.reload();
   };
 
+  const handleSaveBackendAddress = () => {
+    setShowSettings(false);
+  };
   return (
-    <div className="container mt-5">
+    <div className="container-game">
       {view === "home" && (
         <>
           <button
@@ -102,12 +130,21 @@ export default function Home() {
           <h1 className="mb-4">Bienvenido</h1>
           <div className="d-flex justify-content-around">
             <button
-              className="btn btn-primary"
-              onClick={() => setView("create")}
+              className="btn btn-primary btn-lg"
+              onClick={() => {
+                if (!validateBackendAddress()) return; // Validate backend address
+                setView("create");
+              }}
             >
               Crear Partida
             </button>
-            <button className="btn btn-success" onClick={() => setView("list")}>
+            <button
+              className="btn btn-success btn-lg"
+              onClick={() => {
+                if (!validateBackendAddress()) return; // Validate backend address
+                setView("list");
+              }}
+            >
               Unirse a Partida
             </button>
           </div>
@@ -118,12 +155,14 @@ export default function Home() {
           onGameCreated={handleGameCreated}
           onCancel={() => setView("home")}
           setErrorMessage={setErrorMessage}
+          backendAddress={backendAddress}
         />
       )}
       {view === "list" && (
         <GameList
           onSelectGame={handleSelectGame}
           onBack={() => setView("home")}
+          backEndAddress={backendAddress}
         />
       )}
       {/* Modal */}
@@ -135,7 +174,7 @@ export default function Home() {
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">Configuración</h5>
+              <h5 className="modal-title text-dark">Configuración</h5>
               <button
                 type="button"
                 className="btn-close"
@@ -144,7 +183,7 @@ export default function Home() {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label>Dirección del Backend</label>
+                <label className="text-dark">Dirección del Backend</label>
                 <input
                   type="text"
                   className="form-control"
@@ -154,7 +193,11 @@ export default function Home() {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-primary">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveBackendAddress}
+              >
                 Guardar
               </button>
               <button
@@ -174,6 +217,7 @@ export default function Home() {
           onJoinGame={handleJoinGame}
           onCancel={() => setView("list")}
           playerNameRef={playerNameRef}
+          backEndAddress={backendAddress}
         />
       )}
 
@@ -187,6 +231,7 @@ export default function Home() {
             view={view}
             setView={setView}
             setSelectedGame={setSelectedGame}
+            backEndAddress={backendAddress}
           />
         </>
       )}
@@ -198,18 +243,9 @@ export default function Home() {
           gamePassword={gamePassword}
           view={view}
           setView={setView}
+          backEndAddress={backendAddress}
         />
       )}
-
-      {/* Mostrar la pantalla de fin de juego */}
-      {view === "gameEnded" && (
-        <GameEnd
-          citizensScore={citizensScore}
-          enemiesScore={enemiesScore}
-          onReload={handleReload}
-        />
-      )}
-
       {/* Modal de error */}
       <div
         className={`modal fade ${showErrorModal ? "show" : ""}`}
@@ -237,6 +273,39 @@ export default function Home() {
                 className="btn btn-secondary"
                 data-bs-dismiss="modal"
                 onClick={handleCloseErrorModal}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Modal de advertencia de backendAddress */}
+      <div
+        className={`modal fade ${showBackendErrorModal ? "show" : ""}`}
+        style={{ display: showBackendErrorModal ? "block" : "none" }}
+        tabIndex={-1}
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title text-dark" id="backendErrorModalLabel">
+                Dirección del Backend Requerida
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={handleCloseBackendErrorModal}
+              ></button>
+            </div>
+            <div className="modal-body text-dark">
+              Debes configurar una dirección de backend antes de continuar.
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCloseBackendErrorModal}
               >
                 Cerrar
               </button>

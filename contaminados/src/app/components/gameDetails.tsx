@@ -20,6 +20,7 @@ interface GameDetailsProps {
   view: string;
   setView: (view: string) => void;
   setSelectedGame: (game: Game) => void;
+  backEndAddress: string;
 }
 
 const GameDetails: React.FC<GameDetailsProps> = ({
@@ -30,6 +31,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
   view,
   setView,
   setSelectedGame,
+  backEndAddress,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -69,7 +71,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
 
     try {
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}`,
+        `${backEndAddress}/api/games/${selectedGame.id}`,
         {
           method: "GET",
           headers: headers,
@@ -158,7 +160,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
 
     try {
       const response = await fetch(
-        `https://contaminados.akamai.meseguercr.com/api/games/${selectedGame.id}/start`,
+        `${backEndAddress}/api/games/${selectedGame.id}/start`,
         {
           method: "HEAD",
           headers: headers,
@@ -184,7 +186,7 @@ const GameDetails: React.FC<GameDetailsProps> = ({
   };
 
   return (
-    <div className="mt-4">
+    <div className="container-game">
       <h2>Detalles de la Partida: {selectedGame.name}</h2>
       <p>Propietario: {selectedGame.owner}</p>
       <p>Estado: {selectedGame.status}</p>
@@ -194,13 +196,13 @@ const GameDetails: React.FC<GameDetailsProps> = ({
       {selectedGame.players && selectedGame.players.length > 0 ? (
         <ul>
           {selectedGame.players.map((player, index) => (
-            <li key={index}>{player}</li>
+            <li key={index} className="player-card">{player}</li>
           ))}
         </ul>
       ) : (
         <p>No hay jugadores en la partida.</p>
       )}
-      <div className="d-flex justify-content-between mt-4">
+      <div className="button-group">
         <button
           type="button"
           className="btn btn-secondary"
