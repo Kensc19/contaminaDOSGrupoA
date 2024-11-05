@@ -86,7 +86,7 @@ const createGameForm: React.FC<createGameFormProps> = ({
         gameData.password = game.password.trim();
       }
       const response = await fetch(
-        `${backendAddress}api/games`,
+        `${backendAddress}/api/games`,
         {
           method: "POST",
           headers: {
