@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import CustomModal from "./customModal";
 
 interface Game {
   id?: string;
@@ -18,6 +19,10 @@ const GameList: React.FC<GameListProps> = ({
   onBack,
   backEndAddress,
 }) => {
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const handleCloseModal = () => setShowModal(false);
   const [games, setGames] = useState<Game[]>([]);
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,9 +65,10 @@ const GameList: React.FC<GameListProps> = ({
           allGames = [...allGames, ...fetchedData];
           page += 1; // Avanzar a la siguiente página
         } catch (error) {
-          console.error("Error al cargar las partidas", error);
           setLoading(false);
-          return;
+          setModalTitle("Error");
+          setModalMessage("Error al refrescar el juego: " + error);
+          setShowModal(true);
         }
       } while (fetchedData.length > 0); // Detener si ya no hay más resultados
 
@@ -175,6 +181,12 @@ const GameList: React.FC<GameListProps> = ({
           </div>
         </div>
       )}
+      <CustomModal
+        show={showModal}
+        handleClose={handleCloseModal}
+        title={modalTitle}
+        message={modalMessage}
+      />
     </div>
   );
 };
